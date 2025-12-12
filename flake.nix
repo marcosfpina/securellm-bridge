@@ -87,7 +87,7 @@
           version = "2.0.0";
           src = ./mcp-server;
 
-          npmDepsHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # Will be updated on first build
+          npmDepsHash = "sha256-u0xDEW8vlMcyJtnMEPuVDhJv/piK6lUHKPlkAU5H6+8=";
 
           nativeBuildInputs = with pkgs; [
             nodejs
