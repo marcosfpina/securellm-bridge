@@ -57,16 +57,17 @@
           installPhase = ''
             mkdir -p $out/bin
 
-            # Install binaries from all crates
-            for bin in target/release/securellm*; do
-              if [ -f "$bin" ] && [ -x "$bin" ]; then
-                cp "$bin" $out/bin/
-              fi
-            done
+            # The CLI crate generates a binary called "securellm"
+            if [ -f target/release/securellm ]; then
+              cp target/release/securellm $out/bin/
+              # Create symlinks for convenience
+              ln -s securellm $out/bin/securellm-bridge
+              ln -s securellm $out/bin/securellm-cli
+            fi
 
-            # Install CLI if exists
-            if [ -f target/release/cli ]; then
-              cp target/release/cli $out/bin/securellm-cli
+            # Copy api-server if it exists
+            if [ -f target/release/securellm-api-server ]; then
+              cp target/release/securellm-api-server $out/bin/
             fi
           '';
 
@@ -146,7 +147,12 @@
         apps = {
           default = {
             type = "app";
-            program = "${rustPackage}/bin/securellm-cli";
+            program = "${rustPackage}/bin/securellm";
+          };
+
+          bridge = {
+            type = "app";
+            program = "${rustPackage}/bin/securellm-bridge";
           };
 
           mcp = {
