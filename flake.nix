@@ -73,7 +73,7 @@
 
           meta = with pkgs.lib; {
             description = "Secure LLM API proxy with enterprise-grade security";
-            homepage = "https://github.com/securellm/bridge";
+            homepage = "https://github.com/VoidNxSEC/securellm-bridge";
             license = with licenses; [
               mit
               asl20
