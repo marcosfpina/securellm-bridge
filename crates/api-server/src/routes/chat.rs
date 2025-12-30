@@ -9,8 +9,10 @@ use axum::{
 };
 use futures::{stream::{self, Stream}, StreamExt};
 use serde::{Deserialize, Serialize};
-use std::{convert::Infallible, sync::Arc};
+use std::{convert::Infallible, sync::Arc, time::Instant};
 use tracing::{debug, info, warn};
+use uuid::Uuid;
+use securellm_core::audit::{AuditLogger, AuditEvent, RequestStatus, AuditEventType};
 
 use crate::{error::ApiResult, state::AppState};
 
@@ -100,15 +102,19 @@ pub struct ChatDelta {
 }
 
 /// POST /v1/chat/completions - Chat completion endpoint
-/// 
+///
 /// Supports both streaming and non-streaming responses.
 /// Routes requests to appropriate providers based on model prefix.
 pub async fn chat_completions(
     State(state): State<Arc<AppState>>,
     Json(req): Json<ChatCompletionRequest>,
 ) -> ApiResult<axum::response::Response> {
+    let request_id = Uuid::new_v4();
+    let start = Instant::now();
+
     info!(
-        "Chat completion request: model={}, messages={}, stream={:?}",
+        "Chat completion request: request_id={}, model={}, messages={}, stream={:?}",
+        request_id,
         req.model,
         req.messages.len(),
         req.stream
@@ -116,20 +122,83 @@ pub async fn chat_completions(
 
     // Parse provider and model from model string (format: "provider/model")
     let (provider_name, model_name) = parse_model_identifier(&req.model)?;
-    
+
     debug!("Routing to provider: {}, model: {}", provider_name, model_name);
+
+    // Log request received
+    if let Err(e) = state.audit_logger.log_request_received(
+        request_id,
+        &provider_name,
+        &model_name,
+        req.messages.len(),
+        None,  // TODO: Extract client IP from headers
+    ).await {
+        warn!("Failed to log audit event: {}", e);
+    }
 
     // Check if streaming is requested
     if req.stream.unwrap_or(false) {
         // Return SSE stream
-        let stream = create_completion_stream(state, req, provider_name, model_name).await?;
+        let stream = create_completion_stream(state, req, provider_name, model_name, request_id).await?;
         Ok(Sse::new(stream)
             .keep_alive(KeepAlive::default())
             .into_response())
     } else {
         // Return complete response
-        let response = create_completion(state, req, provider_name, model_name).await?;
-        Ok(Json(response).into_response())
+        match create_completion(state.clone(), req.clone(), provider_name.clone(), model_name.clone()).await {
+            Ok(response) => {
+                let duration_ms = start.elapsed().as_millis() as u64;
+
+                // Calculate cost
+                let prompt_tokens = response.usage.prompt_tokens;
+                let completion_tokens = response.usage.completion_tokens;
+                let cost = AuditLogger::estimate_cost(
+                    &provider_name,
+                    &model_name,
+                    prompt_tokens,
+                    completion_tokens,
+                );
+
+                // Log response sent
+                let audit_event = AuditEvent {
+                    timestamp: chrono::Utc::now(),
+                    request_id,
+                    event_type: AuditEventType::ResponseSent,
+                    user_id: req.user.clone(),
+                    provider: provider_name.clone(),
+                    model: model_name.clone(),
+                    prompt_tokens,
+                    completion_tokens,
+                    total_tokens: response.usage.total_tokens,
+                    estimated_cost_usd: cost,
+                    duration_ms,
+                    status: RequestStatus::Success,
+                    error_message: None,
+                    client_ip: None,
+                };
+
+                if let Err(e) = state.audit_logger.log_response_sent(&audit_event).await {
+                    warn!("Failed to log audit event: {}", e);
+                }
+
+                Ok(Json(response).into_response())
+            }
+            Err(e) => {
+                let duration_ms = start.elapsed().as_millis() as u64;
+
+                // Log request failed
+                if let Err(log_err) = state.audit_logger.log_request_failed(
+                    request_id,
+                    &provider_name,
+                    &e.to_string(),
+                    duration_ms,
+                ).await {
+                    warn!("Failed to log audit event: {}", log_err);
+                }
+
+                Err(e)
+            }
+        }
     }
 }
 
@@ -187,6 +256,7 @@ async fn create_completion_stream(
     req: ChatCompletionRequest,
     provider_name: String,
     model_name: String,
+    request_id: Uuid,
 ) -> ApiResult<impl Stream<Item = Result<Event, Infallible>>> {
     // TODO: Implement actual provider streaming
     // For now, return a mock stream

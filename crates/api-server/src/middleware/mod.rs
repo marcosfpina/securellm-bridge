@@ -1,5 +1,8 @@
-// Middleware modules will be implemented here
+// Middleware modules
+
+pub mod rate_limit;
+
+// TODO: Implement additional middleware
 // - Authentication middleware
-// - Rate limiting middleware
 // - Request logging middleware
 // - Circuit breaker middleware
