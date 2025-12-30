@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use deadpool_redis::{Config as RedisConfig, Pool as RedisPool, Runtime};
 
 use crate::config::Config;
 
@@ -10,9 +11,11 @@ use crate::config::Config;
 pub struct AppState {
     pub config: Arc<Config>,
     pub db_pool: SqlitePool,
-    pub redis_client: Arc<redis::Client>,
+    pub redis_pool: RedisPool,  // Changed from Arc<redis::Client> to RedisPool
     pub provider_manager: Arc<ProviderManager>,
     pub metrics: Arc<MetricsCollector>,
+    pub audit_logger: securellm_core::audit::AuditLogger,
+    pub rate_limiter: Arc<securellm_core::rate_limit::RateLimiter>,
 }
 
 impl AppState {
@@ -34,18 +37,24 @@ impl AppState {
             .await
             .context("Failed to run database migrations")?;
 
-        // Initialize Redis client
-        let redis_client = Arc::new(
-            redis::Client::open(config.redis.url.as_str())
-                .context("Failed to create Redis client")?
-        );
+        // Initialize Redis connection pool (async)
+        let redis_config = RedisConfig::from_url(&config.redis.url);
+        let redis_pool = redis_config
+            .create_pool(Some(Runtime::Tokio1))
+            .context("Failed to create Redis pool")?;
 
-        // Test Redis connection
-        let mut redis_conn = redis_client.get_connection()
-            .context("Failed to connect to Redis")?;
-        redis::cmd("PING")
-            .query::<String>(&mut redis_conn)
-            .context("Failed to ping Redis")?;
+        // Test Redis connection (async)
+        {
+            let mut conn = redis_pool.get().await
+                .context("Failed to get Redis connection from pool")?;
+
+            redis::cmd("PING")
+                .query_async::<String>(&mut *conn)
+                .await
+                .context("Failed to ping Redis")?;
+
+            tracing::info!("✅ Redis connection pool initialized and verified");
+        }
 
         // Initialize provider manager
         let provider_manager = Arc::new(ProviderManager::new(config.clone()).await?);
@@ -53,12 +62,20 @@ impl AppState {
         // Initialize metrics collector
         let metrics = Arc::new(MetricsCollector::new());
 
+        // Initialize audit logger
+        let audit_logger = securellm_core::audit::AuditLogger::new();
+
+        // Initialize rate limiter with default configurations
+        let rate_limiter = Arc::new(securellm_core::rate_limit::RateLimiter::default());
+
         Ok(Arc::new(Self {
             config: Arc::new(config),
             db_pool,
-            redis_client,
+            redis_pool,  // Changed from redis_client
             provider_manager,
             metrics,
+            audit_logger,
+            rate_limiter,
         }))
     }
 }

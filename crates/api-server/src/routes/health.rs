@@ -123,10 +123,10 @@ async fn check_database_health(state: &AppState) -> ComponentHealth {
 /// Check Redis health
 async fn check_redis_health(state: &AppState) -> ComponentHealth {
     let start = std::time::Instant::now();
-    
-    match state.redis_client.get_connection() {
+
+    match state.redis_pool.get().await {
         Ok(mut conn) => {
-            match redis::cmd("PING").query::<String>(&mut conn) {
+            match redis::cmd("PING").query_async::<String>(&mut *conn).await {
                 Ok(_) => ComponentHealth {
                     status: "healthy".to_string(),
                     latency_ms: Some(start.elapsed().as_millis() as u64),

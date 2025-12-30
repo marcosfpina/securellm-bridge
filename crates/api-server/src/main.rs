@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use axum::{
-    http::{header, HeaderValue, Method, StatusCode},
+    http::{header, HeaderValue, Method},
+    middleware as axum_middleware,
     response::IntoResponse,
     routing::{get, post},
     Json,
@@ -16,6 +17,7 @@ use tower_http::{
 };
 use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 
 mod config;
 mod error;
@@ -67,34 +69,70 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// Initialize tracing with OpenTelemetry support
+/// Initialize tracing with file appender and daily rotation
 fn init_tracing() -> Result<()> {
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("info,securellm_api_server=debug"));
 
+    // Console logging (stderr) - structured JSON
+    let console_layer = tracing_subscriber::fmt::layer()
+        .with_target(true)
+        .with_level(true)
+        .with_thread_ids(true)
+        .json();
+
+    // File logging with daily rotation
+    let log_dir = std::env::var("LOG_DIR")
+        .unwrap_or_else(|_| {
+            // Default to /tmp/securellm for development, /var/log/securellm for production
+            if cfg!(debug_assertions) {
+                "/tmp/securellm".to_string()
+            } else {
+                "/var/log/securellm".to_string()
+            }
+        });
+
+    // Create log directory if it doesn't exist
+    std::fs::create_dir_all(&log_dir)
+        .with_context(|| format!("Failed to create log directory: {}", log_dir))?;
+
+    let file_appender = RollingFileAppender::builder()
+        .rotation(Rotation::DAILY)
+        .filename_prefix("audit")
+        .filename_suffix("log")
+        .max_log_files(90)  // 90 days retention
+        .build(&log_dir)
+        .context("Failed to create log appender")?;
+
+    let file_layer = tracing_subscriber::fmt::layer()
+        .with_writer(file_appender)
+        .with_ansi(false)  // No ANSI colors in file logs
+        .json();
+
     tracing_subscriber::registry()
         .with(env_filter)
-        .with(
-            tracing_subscriber::fmt::layer()
-                .with_target(true)
-                .with_level(true)
-                .with_thread_ids(true)
-                .json(),
-        )
+        .with(console_layer)
+        .with(file_layer)
         .init();
+
+    info!("Audit logging initialized: {}/audit-YYYY-MM-DD.log", log_dir);
 
     Ok(())
 }
 
 /// Build the application router with all routes and middleware
 fn build_router(state: Arc<AppState>) -> Router {
-    // API v1 routes
+    // API v1 routes - protected by rate limiting
     let api_v1_routes = Router::new()
         .route("/models", get(routes::models::list_models))
         .route("/chat/completions", post(routes::chat::chat_completions))
-        .route("/completions", post(routes::completions::text_completions));
+        .route("/completions", post(routes::completions::text_completions))
+        .layer(axum_middleware::from_fn_with_state(
+            state.rate_limiter.clone(),
+            middleware::rate_limit::rate_limit_middleware
+        ));
 
-    // Management routes
+    // Management routes - no rate limiting for health checks
     let management_routes = Router::new()
         .route("/health", get(routes::health::health_check))
         .route("/ready", get(routes::health::readiness_check))
