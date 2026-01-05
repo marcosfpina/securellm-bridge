@@ -25,10 +25,9 @@ echo -e "${GREEN}✅ Dependencies are valid.${NC}"
 
 # 3. Unit Tests
 echo -e "\n${BLUE}🧪 Running Unit Tests...${NC}"
-# Use specific LD_LIBRARY_PATH if needed (from our previous fix)
-if [ -n "$NIX_CC" ]; then
-    export LD_LIBRARY_PATH=$(find /nix/store -name libstdc++.so.6 | grep -v "32bit" | head -n 1 | xargs dirname):$LD_LIBRARY_PATH
-fi
+# Fix for NixOS + Python Wheels (grpc, tree-sitter, etc)
+export LD_LIBRARY_PATH=$(find /nix/store -name libstdc++.so.6 | grep -v "32bit" | head -n 1 | xargs dirname):$LD_LIBRARY_PATH
+
 poetry run pytest -v
 echo -e "${GREEN}✅ Tests Passed.${NC}"
 
@@ -60,7 +59,8 @@ if [ ! -f "$TEST_FILE" ]; then
 fi
 
 # Analyze the tests directory itself as a quick check
-if poetry run phantom knowledge analyze ./tests "Pipeline Test" > /dev/null; then
+# Note: task_context has a default value, so Typer treats it as an option (--task-context)
+if poetry run phantom knowledge analyze ./tests --task-context "Pipeline Test" > /dev/null; then
     echo -e "${GREEN}✅ Analysis command executed successfully.${NC}"
 else
     echo -e "${RED}❌ Analysis command failed.${NC}"

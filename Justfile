@@ -23,3 +23,7 @@ query question:
 # Setup environment (Poetry)
 install:
     poetry install
+
+# Run full validation pipeline
+pipeline:
+    ./scripts/pipeline.sh

@@ -28,7 +28,7 @@ beautifulsoup4 = "*"
 markdown = "*"
 pygments = "*"
 pydantic = "*"
-typer = "*"
+typer = "^0.15.0"
 rich = "*"
 tqdm = "*"
 python-dotenv = "*"
@@ -37,6 +37,10 @@ python-dotenv = "*"
 pytest = "*"
 black = "*"
 isort = "*"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["scripts", "agents", "data"]
 
 [build-system]
 requires = ["poetry-core"]
