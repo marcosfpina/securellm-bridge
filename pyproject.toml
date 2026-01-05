@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "phantom-cli"
+version = "0.1.0"
+description = "Phantom - Unified Framework for Code Analysis and RAG"
+authors = ["Kernel Core <kernel@example.com>"]
+readme = "README.md"
+packages = [{include = "phantom", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+google-cloud-discoveryengine = ">=0.11.0"
+google-cloud-storage = "*"
+google-cloud-aiplatform = "*"
+google-cloud-billing = "*"
+google-auth = "*"
+fastapi = "*"
+uvicorn = "*"
+chromadb = "*"
+sentence-transformers = "*"
+transformers = "*"
+torch = "*"
+accelerate = "*"
+bitsandbytes = "*"
+tree-sitter = "*"
+tree-sitter-languages = "*"
+gitpython = "*"
+beautifulsoup4 = "*"
+markdown = "*"
+pygments = "*"
+pydantic = "*"
+typer = "*"
+rich = "*"
+tqdm = "*"
+python-dotenv = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+black = "*"
+isort = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+phantom = "phantom.cli:app"
