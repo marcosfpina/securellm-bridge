@@ -1,28 +1,63 @@
-# repos.yaml - Define quais repos mapear
+# config/repos.yaml - Phantom Knowledge Base Configuration
+#
+# Define repositórios, hooks e configurações de relatório.
+# Estrutura "verbosa e elegante" para controle total.
+
+global:
+  workspace_root: "."
+  reports_dir: "./data/reports"
+  artifacts_dir: "./data/analyzed"
+  max_concurrency: 4
+
+  # Padrões globais de exclusão
+  exclude:
+    - ".git"
+    - ".venv"
+    - "__pycache__"
+    - "node_modules"
+    - "dist"
+    - "build"
+
 repos:
-  - name: phantom-classifier
-    url: file:///path/to/phantom-classifier
+  - name: phantom-core
+    path: "."
+    priority: critical
+    description: "Core do framework Phantom e CLI"
+
+    # Contexto para o analisador (RAG/LLM)
+    context: |
+      Este é o repositório principal. Contém a lógica de extração,
+      o motor RAG (LangChain) e as integrações com GCP.
+      Foco em performance e segurança.
+
+    # Hooks: Comandos executados durante o ciclo de vida
+    hooks:
+      pre_analyze:
+        - description: "Validar estrutura do projeto"
+          command: "poetry check"
+        - description: "Limpar artefatos antigos"
+          command: "rm -rf data/analyzed/phantom-core"
+
+      post_analyze:
+        - description: "Rodar testes unitários rápidos"
+          command: "poetry run pytest -v"
+        - description: "Gerar relatório executivo"
+          command: "phantom knowledge summarize phantom-core"
+
+    options:
+      deep_analysis: true
+      extract_ast: true
+      security_scan: true
+
+  - name: phoenix-infra
+    path: "./nix"
     priority: high
+    description: "Configurações NixOS e Infraestrutura"
 
-  - name: spectre-sentiment
-    url: file:///path/to/spectre
-    priority: high
+    hooks:
+      pre_analyze:
+        - command: "nix flake check"
+          allow_failure: true
 
-  - name: oswaka-siem
-    url: file:///path/to/oswaka
-    priority: high
-
-  - name: nixos-config
-    url: file:///path/to/nixos-config
-    priority: critical # SUPER importante!
-
-  - name: mcp-servers
-    url: file:///path/to/mcp-servers
-    priority: high
-
-  # Pode adicionar repos públicos também
-  - name: nixpkgs
-    url: https://github.com/NixOS/nixpkgs
-    branch: nixos-unstable
-    priority: medium
-    shallow: true # clone shallow pra economizar
+    options:
+      languages: ["nix", "bash"]

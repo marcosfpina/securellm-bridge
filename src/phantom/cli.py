@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import json
-import os
-import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
+
+import yaml
 
 # Fast imports for CLI responsiveness
 try:
@@ -26,6 +25,14 @@ rag_app = typer.Typer(help="RAG & Vetores (LangChain)")
 app.add_typer(knowledge_app, name="knowledge")
 app.add_typer(ops_app, name="ops")
 app.add_typer(rag_app, name="rag")
+
+
+def load_config(config_path: str):
+    path = Path(config_path)
+    if not path.exists():
+        return {}
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
 
 
 # ================= GLOBAL COMMANDS =================
@@ -72,7 +79,11 @@ def version():
 
 # ================= KNOWLEDGE =================
 @knowledge_app.command("analyze")
-def analyze(repo_path: str, task_context: str = "General Review"):
+def analyze(
+    repo_path: str,
+    task_context: str = "General Review",
+    config_file: str = "./config/repos.yaml",
+):
     """
     Extrai AST e gera JSONL.
     Uso: phantom knowledge analyze ./repo "Contexto"
@@ -86,9 +97,29 @@ def analyze(repo_path: str, task_context: str = "General Review"):
     target = Path(repo_path).expanduser().resolve()
     validate_repository_path(target)
 
+    # Load config to find hooks for this repo
+    config = load_config(config_file)
+    repo_config = next(
+        (
+            r
+            for r in config.get("repos", [])
+            if Path(r.get("path", "")).resolve() == target
+        ),
+        {},
+    )
+
+    if repo_config:
+        console.print(
+            f"📖 Configuração encontrada para: [cyan]{repo_config.get('name')}[/cyan]"
+        )
+        if "context" in repo_config:
+            task_context = repo_config["context"]
+
     console.print(f"🔬 Analisando: [bold]{target.name}[/bold]")
-    analyzer = HermeticAnalyzer()
-    result = analyzer.analyze_repo(target)
+    analyzer = HermeticAnalyzer(config)
+
+    # Pass hooks to analyzer
+    result = analyzer.analyze_repo(target, hooks=repo_config.get("hooks"))
     result["metrics"]["task_context"] = task_context
 
     out = Path("./data/analyzed") / target.name
@@ -119,6 +150,42 @@ def analyze(repo_path: str, task_context: str = "General Review"):
             f.write(json.dumps(doc) + "\n")
 
     console.print(f"[green]✅ Extraído: {len(result['artifacts'])} artefatos.[/green]")
+
+
+@knowledge_app.command("batch-analyze")
+def batch_analyze(config_file: str = "./config/repos.yaml"):
+    """
+    Processa todos os repositórios definidos no arquivo de configuração.
+    """
+    config = load_config(config_file)
+    repos = config.get("repos", [])
+
+    if not repos:
+        console.print(
+            "[yellow]⚠️  Nenhum repositório encontrado na configuração.[/yellow]"
+        )
+        return
+
+    console.print(f"🚀 Iniciando análise em lote de {len(repos)} repositórios...")
+
+    for repo in repos:
+        path = repo.get("path")
+        name = repo.get("name")
+        priority = repo.get("priority", "medium")
+
+        if not path:
+            continue
+
+        console.print(
+            f"\n[bold magenta]📦 Processando: {name} ({priority})[/bold magenta]"
+        )
+
+        try:
+            analyze(path, config_file=config_file)
+        except Exception as e:
+            console.print(f"[red]❌ Falha ao processar {name}: {e}[/red]")
+
+    console.print("\n[green]✨ Batch Analysis Complete![/green]")
 
 
 @knowledge_app.command("summarize")
@@ -153,7 +220,7 @@ def rag_ingest(source_file: str = "./data/analyzed/all_artifacts.jsonl"):
         return
 
     engine = RigorousRAGEngine()
-    console.print(f"🧠 [bold]Ingerindo vetores (VertexAI Embeddings)...[/bold]")
+    console.print("🧠 [bold]Ingerindo vetores (VertexAI Embeddings)...[/bold]")
     try:
         count = engine.ingest(source_file)
         console.print(f"[green]✅ Indexado: {count} chunks no ChromaDB Local.[/green]")

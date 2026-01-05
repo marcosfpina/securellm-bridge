@@ -7,8 +7,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      _self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs {
           inherit system;
@@ -16,39 +22,41 @@
         };
 
         # Python environment completo
-        pythonEnv = pkgs.python313.withPackages (ps: with ps; [
-          # GCP Integration
-          google-cloud-discoveryengine
-          google-cloud-aiplatform
-          google-cloud-storage
+        pythonEnv = pkgs.python313.withPackages (
+          ps: with ps; [
+            # GCP Integration
+            google-cloud-discoveryengine
+            google-cloud-aiplatform
+            google-cloud-storage
 
-          # Embeddings & Vector DB
-          sentence-transformers
-          chromadb
-          faiss-gpu
+            # Embeddings & Vector DB
+            sentence-transformers
+            chromadb
+            faiss-gpu
 
-          # Local LLMs
-          transformers
-          torch
-          accelerate
-          bitsandbytes  # quantização 4-bit
+            # Local LLMs
+            transformers
+            torch
+            accelerate
+            bitsandbytes # quantização 4-bit
 
-          # Code Analysis
-          tree-sitter
-          tree-sitter-languages
-          pygments
+            # Code Analysis
+            tree-sitter
+            tree-sitter-languages
+            pygments
 
-          # Docs parsing
-          gitpython
-          markdown
-          beautifulsoup4
+            # Docs parsing
+            gitpython
+            markdown
+            beautifulsoup4
 
-          # Utils
-          pydantic
-          tqdm
-          rich
-          typer
-        ]);
+            # Utils
+            pydantic
+            tqdm
+            rich
+            typer
+          ]
+        );
 
         # Scripts de análise
         knowledge-extractor = pkgs.writeShellScriptBin "cerebro-extract" ''
@@ -105,7 +113,8 @@
           ${pythonEnv}/bin/python ${./src/cli.py} "$@"
         '';
 
-      in {
+      in
+      {
         packages = {
           default = cerebro-cli;
           extractor = knowledge-extractor;
@@ -117,10 +126,16 @@
             pythonEnv
             pkgs.git
             pkgs.just
-            pkgs.llama-cpp  # pra testar modelos locais
-          ] ++ (if pkgs.stdenv.isLinux then [
-            pkgs.cudaPackages.cudatoolkit
-          ] else []);
+            pkgs.llama-cpp # pra testar modelos locais
+          ]
+          ++ (
+            if pkgs.stdenv.isLinux then
+              [
+                pkgs.cudaPackages.cudatoolkit
+              ]
+            else
+              [ ]
+          );
 
           shellHook = ''
             export CEREBRO_DATA_DIR="./data"
@@ -146,62 +161,69 @@
         };
 
         # NixOS module pra rodar como serviço
-        nixosModules.cerebro = { config, lib, pkgs, ... }: {
-          options.services.cerebro = {
-            enable = lib.mkEnableOption "CEREBRO RAG server";
+        nixosModules.cerebro =
+          {
+            config,
+            lib,
+            _pkgs,
+            ...
+          }:
+          {
+            options.services.cerebro = {
+              enable = lib.mkEnableOption "CEREBRO RAG server";
 
-            port = lib.mkOption {
-              type = lib.types.port;
-              default = 8000;
-              description = "Port for CEREBRO server";
-            };
-
-            modelName = lib.mkOption {
-              type = lib.types.str;
-              default = "mistral-7b-instruct-v0.2";
-              description = "Local model to use";
-            };
-
-            dbPath = lib.mkOption {
-              type = lib.types.path;
-              default = "/var/lib/cerebro/cerebro.db";
-              description = "Path to knowledge base";
-            };
-          };
-
-          config = lib.mkIf config.services.cerebro.enable {
-            systemd.services.cerebro = {
-              description = "CEREBRO RAG Server";
-              wantedBy = [ "multi-user.target" ];
-              after = [ "network.target" ];
-
-              serviceConfig = {
-                Type = "simple";
-                ExecStart = "${cerebro-server}/bin/cerebro-serve";
-                Restart = "on-failure";
-                RestartSec = "10s";
-
-                # Security hardening
-                DynamicUser = true;
-                StateDirectory = "cerebro";
-                CacheDirectory = "cerebro";
-                PrivateTmp = true;
-                ProtectSystem = "strict";
-                ProtectHome = true;
-                NoNewPrivileges = true;
+              port = lib.mkOption {
+                type = lib.types.port;
+                default = 8000;
+                description = "Port for CEREBRO server";
               };
 
-              environment = {
-                CEREBRO_PORT = toString config.services.cerebro.port;
-                CEREBRO_MODEL = config.services.cerebro.modelName;
-                CEREBRO_DB = config.services.cerebro.dbPath;
+              modelName = lib.mkOption {
+                type = lib.types.str;
+                default = "mistral-7b-instruct-v0.2";
+                description = "Local model to use";
+              };
+
+              dbPath = lib.mkOption {
+                type = lib.types.path;
+                default = "/var/lib/cerebro/cerebro.db";
+                description = "Path to knowledge base";
               };
             };
 
-            # Firewall
-            networking.firewall.allowedTCPPorts = [ config.services.cerebro.port ];
+            config = lib.mkIf config.services.cerebro.enable {
+              systemd.services.cerebro = {
+                description = "CEREBRO RAG Server";
+                wantedBy = [ "multi-user.target" ];
+                after = [ "network.target" ];
+
+                serviceConfig = {
+                  Type = "simple";
+                  ExecStart = "${cerebro-server}/bin/cerebro-serve";
+                  Restart = "on-failure";
+                  RestartSec = "10s";
+
+                  # Security hardening
+                  DynamicUser = true;
+                  StateDirectory = "cerebro";
+                  CacheDirectory = "cerebro";
+                  PrivateTmp = true;
+                  ProtectSystem = "strict";
+                  ProtectHome = true;
+                  NoNewPrivileges = true;
+                };
+
+                environment = {
+                  CEREBRO_PORT = toString config.services.cerebro.port;
+                  CEREBRO_MODEL = config.services.cerebro.modelName;
+                  CEREBRO_DB = config.services.cerebro.dbPath;
+                };
+              };
+
+              # Firewall
+              networking.firewall.allowedTCPPorts = [ config.services.cerebro.port ];
+            };
           };
-        };
       }
     );
 }

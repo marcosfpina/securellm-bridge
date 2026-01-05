@@ -1,5 +1,5 @@
 {
-  description = "PHANTOM - Unified Framework with Poetry & Nix";
+  description = "PHANTOM Cerebro - Knowledge Extraction & RAG Framework";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -17,60 +17,107 @@
       let
         pkgs = import nixpkgs {
           inherit system;
-          config.allowUnfree = true;
+          config.allowUnfree = true; # For CUDA if needed
         };
 
-        python = pkgs.python312;
+        # Python environment with core dependencies
+        pythonEnv = pkgs.python312.withPackages (
+          ps: with ps; [
+            # Core dependencies
+            pydantic
+            typer
+            rich
+            tqdm
+            python-dotenv
+            pyyaml
+
+            # Development tools
+            pytest
+            black
+            isort
+            ruff
+          ]
+        );
+
       in
       {
+        # Development shell
         devShells.default = pkgs.mkShell {
           buildInputs = [
-            python
+            pythonEnv
             pkgs.poetry
             pkgs.google-cloud-sdk
             pkgs.just
             pkgs.git
             pkgs.stdenv.cc.cc.lib
             pkgs.zlib
-          ];
+            pkgs.llama-cpp # For local model testing
+          ]
+          ++ (pkgs.lib.optionals pkgs.stdenv.isLinux [
+            pkgs.cudaPackages.cudatoolkit
+          ]);
 
           shellHook = ''
             export PYTHONPATH="$PWD/src:$PYTHONPATH"
-            
-            # Garante que o Poetry crie o venv dentro do projeto para fácil inspeção
+
+            # Poetry configuration
             export POETRY_VIRTUALENVS_IN_PROJECT=true
             export POETRY_VIRTUALENVS_CREATE=true
 
-            # Garante bibliotecas do sistema para extensões compiladas (torch, tree-sitter)
-            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.zlib ]}:$LD_LIBRARY_PATH"
+            # System libraries for compiled extensions
+            export LD_LIBRARY_PATH="${
+              pkgs.lib.makeLibraryPath [
+                pkgs.stdenv.cc.cc.lib
+                pkgs.zlib
+                pkgs.stdenv.cc.libc
+              ]
+            }:$LD_LIBRARY_PATH"
 
-            echo "📥 Sincronizando dependências com Poetry (Python 3.12)..."
-            
-            # Força o uso do Python 3.12
-            poetry env use python3.12
-            
-            if ! poetry install; then
-              echo "⚠️  Falha no poetry install. Tentando com --no-root se necessário..."
-              poetry install --no-root
+            # Create necessary directories
+            mkdir -p ./data/analyzed ./data/vector_db ./data/reports
+
+            # GCP configuration
+            if [ -f ~/.config/gcloud/application_default_credentials.json ]; then
+              export GOOGLE_APPLICATION_CREDENTIALS=~/.config/gcloud/application_default_credentials.json
             fi
 
-            # Ativa o venv do poetry automaticamente no shell do nix
-            if [ -d ".venv" ]; then
+            # Project environment variables
+            export CEREBRO_DATA_DIR="$PWD/data"
+            export CEREBRO_VECTOR_DB="$PWD/data/vector_db"
+            export GCP_PROJECT_ID="''${GCP_PROJECT_ID:-}"
+            export GCP_REGION="us-central1"
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🧠 PHANTOM CEREBRO - Development Environment"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Python: $(python --version)"
+            echo "Poetry: $(poetry --version)"
+
+            # Install poetry dependencies if not already installed
+            if [ ! -d ".venv" ] || [ ! -f "pyproject.toml" ]; then
+              echo "📥 Setting up Poetry environment..."
+              poetry env use python3.12
+              poetry install
+              source .venv/bin/activate
+            elif [ -d ".venv" ]; then
               source .venv/bin/activate
             fi
 
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "🧠 PHANTOM - Poetry + Nix Environment (Py3.12)"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "Entrypoint: phantom [comando]"
             echo ""
-            echo "Comandos disponíveis:"
-            echo "  phantom knowledge analyze --path ./src"
-            echo "  phantom knowledge summarize"
-            echo "  phantom gcp validate"
+            echo "Available commands:"
+            echo "  poetry run phantom [command]  - Run CLI via poetry"
+            echo "  pytest tests/                - Run tests"
+            echo "  just [task]                  - Run just task"
+            echo "  nix develop                  - Enter this dev shell"
+            echo ""
+            echo "Data directories:"
+            echo "  ./data/analyzed     - Analyzed artifacts"
+            echo "  ./data/vector_db    - Vector database"
+            echo "  ./data/reports      - Analysis reports"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           '';
         };
+
       }
     );
 }
