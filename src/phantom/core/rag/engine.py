@@ -12,7 +12,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 class RigorousRAGEngine:
     def __init__(self, persist_directory: str = "./data/vector_db"):
         self.persist_directory = persist_directory
-        self.embeddings = VertexAIEmbeddings(model="textembedding-gecko@003")
+        self.embeddings = VertexAIEmbeddings(model="text-embedding-004")
         self.llm = VertexAI(model="gemini-pro", temperature=0.0)
         self.vector_db = None
 
@@ -76,7 +76,7 @@ class RigorousRAGEngine:
         if not docs_with_scores:
             return {
                 "answer": "No context found.",
-                "metrics": {"hit_rate": 0.0, "avg_score": 0.0},
+                "metrics": {"hit_rate_k": "0%", "avg_confidence": 0.0, "top_source": "N/A"},
             }
 
         # 2. Cálculo de Métricas
