@@ -10,9 +10,47 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 from chromadb import PersistentClient
 from typing import List, Optional
-import json
+import logging
+import time
+import os
+
+# Structured Logging for Cloud Run (JSON format)
+class CloudRunFormatter(logging.Formatter):
+    def format(self, record):
+        log_entry = {
+            "severity": record.levelname,
+            "message": record.getMessage(),
+            "timestamp": self.formatTime(record),
+            "logging.googleapis.com/sourceLocation": {
+                "file": record.pathname,
+                "line": record.lineno,
+                "function": record.funcName,
+            }
+        }
+        if hasattr(record, "request_id"):
+            log_entry["request_id"] = record.request_id
+        return json.dumps(log_entry)
+
+logger = logging.getLogger("cerebro")
+handler = logging.StreamHandler()
+handler.setFormatter(CloudRunFormatter())
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 app = FastAPI(title="CEREBRO RAG Server")
+
+# Middleware for request timing (Observability)
+@app.middleware("http")
+async def add_process_time_header(request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    logger.info(
+        f"Request: {request.method} {request.url.path} - Completed in {process_time:.4f}s",
+        extra={"request_id": request.headers.get("x-request-id")}
+    )
+    response.headers["X-Process-Time"] = str(process_time)
+    return response
 
 class QueryRequest(BaseModel):
     query: str
@@ -26,7 +64,8 @@ class QueryResponse(BaseModel):
 
 class CEREBROServer:
     def __init__(self, model_name: str, db_path: str, quantization: str = "4bit"):
-        print(f"🧠 Loading CEREBRO with {model_name}...")
+        logger.info(f"🧠 Loading CEREBRO with {model_name}...")
+        self.start_time = time.time()
 
         # Load vector DB
         self.db = PersistentClient(path=db_path)
@@ -140,7 +179,14 @@ async def query(request: QueryRequest):
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "model_loaded": cerebro is not None}
+    uptime = time.time() - cerebro.start_time if cerebro else 0
+    return {
+        "status": "healthy" if cerebro else "initializing",
+        "model_loaded": cerebro is not None,
+        "uptime_seconds": uptime,
+        "environment": os.getenv("NODE_ENV", "production"),
+        "version": "0.1.0"
+    }
 
 if __name__ == "__main__":
     import uvicorn

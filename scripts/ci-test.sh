@@ -60,8 +60,8 @@ echo "════════════════════════�
 echo "  Job: CLI Tests"
 echo "═══════════════════════════════════════════════════════════"
 
-run_test "cerebro help" \
-  "nix develop -c cerebro help"
+run_test "cerebro --help" \
+  "nix develop -c cerebro --help"
 
 run_test "cerebro info" \
   "nix develop -c cerebro info"
@@ -69,8 +69,8 @@ run_test "cerebro info" \
 run_test "cerebro version" \
   "nix develop -c cerebro version"
 
-run_test "cerebro status" \
-  "nix develop -c cerebro status"
+run_test "cerebro ops status" \
+  "nix develop -c cerebro ops status"
 
 # Job 3: Syntax Check
 echo ""
@@ -78,13 +78,19 @@ echo "════════════════════════�
 echo "  Job: Syntax Check"
 echo "═══════════════════════════════════════════════════════════"
 
-run_test "Check phantom.py syntax" \
-  "nix develop -c python -m py_compile phantom.py"
-
 run_test "Check all Python files" \
-  "nix develop -c bash -c 'find phantom/ -name \"*.py\" -exec python -m py_compile {} \;'"
+  "nix develop -c bash -c 'find src/phantom/ -name \"*.py\" -exec python -m py_compile {} \;'"
 
-# Job 4: Full Validation
+# Job 4: Unit Tests
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo "  Job: Unit Tests"
+echo "═══════════════════════════════════════════════════════════"
+
+run_test "Pytest suite" \
+  "nix develop -c pytest tests/"
+
+# Job 5: Full Validation
 echo ""
 echo "═══════════════════════════════════════════════════════════"
 echo "  Job: Full Validation Suite"

@@ -97,40 +97,26 @@ echo "════════════════════════�
 echo "  BASIC COMMANDS"
 echo "═══════════════════════════════════════════════════════════"
 
-test_command "phantom.py help" "python phantom.py --help"
-test_command "phantom.py info" "python phantom.py info"
-test_command "phantom.py version" "python phantom.py version"
+test_command "cerebro --help" "python -m phantom.cli --help"
+test_command "cerebro info" "python -m phantom.cli info"
+test_command "cerebro version" "python -m phantom.cli version"
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
 echo "  PYTHON IMPORTS"
 echo "═══════════════════════════════════════════════════════════"
 
-test_command "Import phantom.core" "python -c 'from phantom.core import gcp'"
-test_command "Import phantom.modules" "python -c 'from phantom.modules import credit_burner'"
+test_command "Import phantom.core" "python -c 'from phantom.core import rag'"
+test_command "Import phantom.modules" "python -c 'from phantom.cli import app'"
 test_command "Import typer" "python -c 'import typer'"
 test_command "Import rich" "python -c 'import rich'"
-
-echo ""
-echo "═══════════════════════════════════════════════════════════"
-echo "  GCP COMMANDS (may require auth)"
-echo "═══════════════════════════════════════════════════════════"
-
-# Verifica se está autenticado
-if gcloud auth application-default print-access-token &>/dev/null; then
-  test_command "phantom.py gcp validate" "python phantom.py gcp validate"
-  test_command "phantom.py gcp list" "python phantom.py gcp datastores-list"
-else
-  skip_test "phantom.py gcp validate" "Not authenticated"
-  skip_test "phantom.py gcp list" "Not authenticated"
-fi
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
 echo "  INVALID COMMANDS (should fail)"
 echo "═══════════════════════════════════════════════════════════"
 
-test_command "phantom.py invalid" "python phantom.py invalid_command 2>&1 | grep -q 'Usage:'" "true"
+test_command "cerebro invalid" "python -m phantom.cli invalid_command 2>&1 | grep -q 'Usage:'"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
