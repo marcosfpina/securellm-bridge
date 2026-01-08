@@ -1,24 +1,28 @@
-# Justfile - PHANTOM Automation
+# Justfile - CEREBRO Automation
 
 # Run test suite
 test:
     poetry run pytest
 
-# Show Phantom environment info
+# Show Cerebro environment info
 info:
-    poetry run phantom info
+    poetry run cerebro info
 
 # Run code analysis on a repository
 analyze path context="General Review":
-    poetry run phantom knowledge analyze {{path}} "{{context}}"
+    poetry run cerebro knowledge analyze {{path}} "{{context}}"
 
-# Start RAG ingestion (requires GCP/LangChain)
+# Sincroniza dados com o GCS (Staging para Ingestão)
+sync local_dir="./data/analyzed":
+    ./scripts/sync_data.sh {{local_dir}}
+
+# Start RAG ingestion (Discovery Engine Import)
 ingest:
-    poetry run phantom rag ingest
+    poetry run cerebro rag ingest
 
 # Query the knowledge base
 query question:
-    poetry run phantom rag query "{{question}}"
+    poetry run cerebro rag query "{{question}}"
 
 # Setup environment (Poetry)
 install:
