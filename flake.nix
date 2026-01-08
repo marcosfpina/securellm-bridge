@@ -21,7 +21,7 @@
         };
 
         # Python environment with core dependencies
-        pythonEnv = pkgs.python312.withPackages (
+        pythonEnv = pkgs.python313.withPackages (
           ps: with ps; [
             # Core dependencies
             pydantic
@@ -84,7 +84,7 @@
             # Project environment variables
             export CEREBRO_DATA_DIR="$PWD/data"
             export CEREBRO_VECTOR_DB="$PWD/data/vector_db"
-            export GCP_PROJECT_ID="''${GCP_PROJECT_ID:-}"
+            export GCP_PROJECT_ID="gen-lang-client-0530325234"
             export GCP_REGION="us-central1"
 
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

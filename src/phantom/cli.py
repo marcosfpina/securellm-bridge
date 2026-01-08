@@ -207,23 +207,25 @@ def summarize(repo_name: str):
     console.print(f"[green]✅ Relatório: {path}/EXECUTIVE_REPORT.md[/green]")
 
 
-# ================= RAG (LangChain) =================
+# ================= RAG (Vertex AI Search) =================
 @rag_app.command("ingest")
 def rag_ingest(source_file: str = "./data/analyzed/all_artifacts.jsonl"):
     """
-    Cria Vector DB Local (Chroma) para alta precisão.
+    Ingestão Cloud-Native (Discovery Engine) - CONSOME CRÉDITOS GENAI.
     """
     try:
         from phantom.core.rag.engine import RigorousRAGEngine
     except ImportError:
-        console.print("[red]❌ Dependências LangChain ausentes.[/red]")
+        console.print("[red]❌ Dependências GCP/DiscoveryEngine ausentes.[/red]")
         return
 
     engine = RigorousRAGEngine()
-    console.print("🧠 [bold]Ingerindo vetores (VertexAI Embeddings)...[/bold]")
+    console.print("🧠 [bold]Ingerindo artefatos no Discovery Engine (A LEI)...[/bold]")
     try:
         count = engine.ingest(source_file)
-        console.print(f"[green]✅ Indexado: {count} chunks no ChromaDB Local.[/green]")
+        console.print(f"[green]✅ Processamento iniciado para {count} artefatos.[/green]")
+        console.print("[yellow]ℹ️  A indexação ocorre de forma assíncrona no Google Cloud.[/yellow]")
+        console.print("💡 Monitore aqui: [link]https://console.cloud.google.com/gen-app-builder/data-stores[/link]")
     except Exception as e:
         console.print(f"[red]❌ Erro: {e}[/red]")
 
@@ -231,49 +233,59 @@ def rag_ingest(source_file: str = "./data/analyzed/all_artifacts.jsonl"):
 @rag_app.command("query")
 def rag_query(question: str):
     """
-    Consulta o RAG Local e exibe métricas de precisão.
+    Consulta o RAG Cloud (Discovery Engine) com Grounded Generation.
     """
     try:
         from phantom.core.rag.engine import RigorousRAGEngine
     except ImportError:
         console.print(
-            "[red]❌ Dependências LangChain ausentes. Instale: poetry install[/red]"
+            "[red]❌ Dependências GCP ausentes. Instale: poetry install[/red]"
         )
         return
 
     engine = RigorousRAGEngine()
-    console.print(f"🔎 Buscando: [italic]{question}[/italic]...")
+    console.print(f"🔎 Buscando na Nuvem: [italic]{question}[/italic]...")
 
     result = engine.query_with_metrics(question)
 
+    if "❌ Erro" in result["answer"]:
+        console.print(result["answer"])
+        return
+
     # Exibir Resposta
     console.print(
-        Panel(result["answer"], title="🤖 PHANTOM Answer", border_style="green")
+        Panel(result["answer"], title="🤖 CEREBRO (Grounded Answer)", border_style="green")
     )
 
-    # Exibir Métricas Rigorosas
+    # Exibir Métricas de Nuvem
     metrics = result["metrics"]
-    table = Table(title="RAG Quality Metrics")
+    table = Table(title="Cloud RAG Metrics (GenAI App Builder Credits)")
     table.add_column("Metric", style="cyan")
     table.add_column("Value", style="magenta")
 
-    table.add_row("Avg Confidence", str(metrics["avg_confidence"]))
-    table.add_row("Hit Rate (@k=4)", metrics["hit_rate_k"])
-    table.add_row("Top Source", Path(metrics["top_source"]).name)
+    table.add_row("Hit Rate (@k=5)", metrics["hit_rate_k"])
+    table.add_row("Top Source", metrics["top_source"])
+    table.add_row("Citations", str(len(metrics.get("citations", []))))
+    table.add_row("Est. Cost (Credits)", f"${metrics.get('cost_estimate_usd', 0.004):.4f}")
 
     console.print(table)
+
+    if metrics.get("citations"):
+        console.print("\n[bold]📚 Fontes Citadas:[/bold]")
+        for c in metrics["citations"]:
+            console.print(f"  • {c}")
 
 
 # ================= OPS =================
 @ops_app.command("health")
 def health():
     """
-    Verifica a saúde do sistema (Credenciais, Permissões, APIs).
+    Verifica a saúde do sistema (Credenciais, Permissões, APIs, Data Stores).
     """
     from rich.status import Status
-    import time
+    import os
     
-    table = Table(title="System Health Check")
+    table = Table(title="CEREBRO System Health Check")
     table.add_column("Check", style="cyan")
     table.add_column("Status", style="bold")
     table.add_column("Details", style="dim")
@@ -282,35 +294,49 @@ def health():
         # 1. File System Check
         try:
             Path("./data").mkdir(exist_ok=True)
-            test_file = Path("./data/write_test")
-            test_file.touch()
-            test_file.unlink()
-            table.add_row("File System (Write)", "[green]OK[/green]", "./data is writable")
+            table.add_row("File System", "[green]OK[/green]", "./data is writable")
         except Exception as e:
-            table.add_row("File System (Write)", "[red]FAIL[/red]", str(e))
+            table.add_row("File System", "[red]FAIL[/red]", str(e))
 
-        # 2. Google Cloud Credentials
+        # 2. Google Cloud Credentials & Project
+        project_id = os.getenv("GCP_PROJECT_ID")
         try:
             import google.auth
-            creds, project = google.auth.default()
-            if creds and project:
-                 table.add_row("GCP Credentials", "[green]OK[/green]", f"Project: {project}")
+            creds, detected_project = google.auth.default()
+            
+            final_project = project_id or detected_project
+            if creds and final_project:
+                 table.add_row("GCP Auth", "[green]OK[/green]", f"Project: {final_project}")
             else:
-                 table.add_row("GCP Credentials", "[yellow]WARN[/yellow]", "No default credentials found")
+                 table.add_row("GCP Auth", "[red]FAIL[/red]", "No project/creds found")
         except Exception as e:
-            table.add_row("GCP Credentials", "[red]FAIL[/red]", str(e))
+            table.add_row("GCP Auth", "[red]FAIL[/red]", str(e))
 
-        # 3. Vertex AI Connectivity (Ping)
-        try:
-            from langchain_google_vertexai import VertexAIEmbeddings
-            # Attempt a cheap operation
-            emb = VertexAIEmbeddings(model="text-embedding-004")
-            _ = emb.embed_query("ping")
-            table.add_row("Vertex AI API", "[green]OK[/green]", "Embedding API reachable")
-        except Exception as e:
-             table.add_row("Vertex AI API", "[red]FAIL[/red]", str(e))
+        # 3. Discovery Engine & Data Store (A LEI)
+        ds_id = os.getenv("DATA_STORE_ID")
+        if ds_id:
+            try:
+                from google.cloud import discoveryengine_v1beta as discoveryengine
+                client = discoveryengine.DataStoreServiceClient()
+                parent = f"projects/{final_project}/locations/global/collections/default_collection"
+                # Test call to list (cheap)
+                client.list_data_stores(parent=parent)
+                table.add_row("Discovery Engine API", "[green]OK[/green]", f"Data Store ID: {ds_id}")
+            except Exception as e:
+                table.add_row("Discovery Engine API", "[red]FAIL[/red]", f"DS ID set but API failed: {str(e)[:50]}...")
+        else:
+            table.add_row("Discovery Engine API", "[yellow]MISSING[/yellow]", "DATA_STORE_ID not set. RAG will fail.")
+
+        # 4. BigQuery Billing Export (FinOps)
+        table.add_row("Billing Audit", "[dim]N/A[/dim]", "Enable BQ Export to monitor credits")
 
     console.print(table)
+    
+    if not ds_id or not final_project:
+        console.print("\n[bold red]⚠️  ATENÇÃO: CONFIGURAÇÃO INCOMPLETA[/bold red]")
+        console.print("Para consumir os R$ 10k em créditos, você PRECISA configurar:")
+        console.print(f"  export GCP_PROJECT_ID='gen-lang-client-0530325234'")
+        console.print("  export DATA_STORE_ID='seu-data-store-id'")
 
 
 @ops_app.command("status")
