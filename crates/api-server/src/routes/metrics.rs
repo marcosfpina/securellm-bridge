@@ -8,7 +8,7 @@ use crate::state::AppState;
 /// 
 /// Returns metrics in Prometheus format for scraping
 pub async fn metrics(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
     debug!("Metrics requested");
 

@@ -51,7 +51,7 @@ pub struct CompletionUsage {
 
 /// POST /v1/completions - Text completion endpoint
 pub async fn text_completions(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     Json(req): Json<CompletionRequest>,
 ) -> ApiResult<Json<CompletionResponse>> {
     info!("Text completion request: model={}, prompt_len={}", req.model, req.prompt.len());

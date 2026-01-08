@@ -215,10 +215,10 @@ fn parse_model_identifier(model: &str) -> ApiResult<(String, String)> {
 
 /// Create non-streaming completion
 async fn create_completion(
-    state: Arc<AppState>,
+    _state: Arc<AppState>,
     req: ChatCompletionRequest,
-    provider_name: String,
-    model_name: String,
+    _provider_name: String,
+    _model_name: String,
 ) -> ApiResult<ChatCompletionResponse> {
     // TODO: Implement actual provider call
     // For now, return a mock response
@@ -252,11 +252,11 @@ async fn create_completion(
 
 /// Create streaming completion
 async fn create_completion_stream(
-    state: Arc<AppState>,
+    _state: Arc<AppState>,
     req: ChatCompletionRequest,
-    provider_name: String,
-    model_name: String,
-    request_id: Uuid,
+    _provider_name: String,
+    _model_name: String,
+    _request_id: Uuid,
 ) -> ApiResult<impl Stream<Item = Result<Event, Infallible>>> {
     // TODO: Implement actual provider streaming
     // For now, return a mock stream

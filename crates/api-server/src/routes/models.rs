@@ -114,7 +114,7 @@ pub async fn list_models(
 /// 
 /// This endpoint forces a rescan of all providers to discover new models.
 pub async fn sync_models(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> ApiResult<(StatusCode, Json<serde_json::Value>)> {
     info!("Manual model sync triggered");
 
