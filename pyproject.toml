@@ -1,10 +1,17 @@
-[tool.poetry]
+[project]
 name = "phantom-cli"
 version = "0.1.0"
 description = "Phantom - Unified Framework for Code Analysis and RAG"
-authors = ["Kernel Core <kernel@example.com>"]
+authors = [{ name = "Kernel Core", email = "kernel@example.com" }]
 readme = "README.md"
-packages = [{include = "phantom", from = "src"}]
+requires-python = "^3.11"
+
+[project.scripts]
+phantom = "phantom.cli:app"
+cerebro = "phantom.cli:app"
+
+[tool.poetry]
+packages = [{ include = "phantom", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -12,6 +19,7 @@ google-cloud-discoveryengine = ">=0.11.0"
 google-cloud-storage = "*"
 google-cloud-aiplatform = "*"
 google-cloud-billing = "*"
+google-cloud-dialogflow-cx = "*"
 google-auth = "*"
 fastapi = "*"
 uvicorn = "*"
@@ -52,7 +60,3 @@ norecursedirs = ["scripts", "agents", "data"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.scripts]
-phantom = "phantom.cli:app"
-cerebro = "phantom.cli:app"

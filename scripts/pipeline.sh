@@ -25,8 +25,9 @@ echo -e "${GREEN}✅ Dependencies are valid.${NC}"
 
 # 3. Unit Tests
 echo -e "\n${BLUE}🧪 Running Unit Tests...${NC}"
-# Fix for NixOS + Python Wheels (grpc, tree-sitter, etc)
-export LD_LIBRARY_PATH=$(find /nix/store -name libstdc++.so.6 | grep -v "32bit" | head -n 1 | xargs dirname):$LD_LIBRARY_PATH
+# Fix for NixOS + Python Wheels (handled by flake.nix)
+# export LD_LIBRARY_PATH handled by devShell
+
 
 poetry run pytest -v
 echo -e "${GREEN}✅ Tests Passed.${NC}"

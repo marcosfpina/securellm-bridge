@@ -21,7 +21,7 @@
         };
 
         # Python environment with core dependencies
-        pythonEnv = pkgs.python313.withPackages (
+        pythonEnv = pkgs.python311.withPackages (
           ps: with ps; [
             # Core dependencies
             pydantic
