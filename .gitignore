@@ -30,6 +30,8 @@ result
 result-*
 .direnv/
 .nix-pip/
+.mcp.json
+
 
 # Project Specific Data & Cache
 data/
@@ -38,6 +40,9 @@ repos/
 PROJECT_SUMMARY.txt
 *.jsonl
 *.json
+*.log
+*.txt
+*.csv
 
 # Environment & Secrets
 .env
@@ -47,6 +52,7 @@ secrets/
 *.key
 *.pem
 application_default_credentials.json
+
 
 # IDEs & OS
 .vscode/
