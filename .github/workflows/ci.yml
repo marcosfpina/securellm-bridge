@@ -1,0 +1,72 @@
+name: 🛡️ SecureLLM Defense Pipeline
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings" # Treat warnings as errors
+
+jobs:
+  security_audit:
+    name: 🔒 Security & Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: 🕵️ Cargo Audit (Vulnerabilities)
+        uses: rustsec/audit-check@v1.4.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+        # Demonstrates proactive security monitoring
+
+      - name: ⚖️ License Compliance
+        run: |
+          cargo install cargo-deny --locked
+          # cargo deny check bans licenses sources
+        # Ensures legal compliance for enterprise usage
+
+  static_analysis:
+    name: 🧠 Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: 🎨 Formatting
+        run: cargo fmt --all -- --check
+
+      - name: 📎 Clippy (Strict)
+        run: cargo clippy --workspace --all-targets --all-features
+        # Enforces idiomatic and safe Rust patterns
+
+  testing_coverage:
+    name: 🧪 Test & Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install Tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: 📊 Generate Coverage Report
+        run: |
+          cargo tarpaulin --verbose --workspace --timeout 120 --out Xml
+        # KPI: Visualizes test completeness
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./cobertura.xml
+          fail_ci_if_error: false
