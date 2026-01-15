@@ -21,7 +21,7 @@
         };
 
         # Python environment with core dependencies
-        pythonEnv = pkgs.python311.withPackages (
+        pythonEnv = pkgs.python313.withPackages (
           ps: with ps; [
             # Core dependencies
             pydantic
@@ -96,7 +96,7 @@
             # Install poetry dependencies if not already installed
             if [ ! -d ".venv" ] || [ ! -f "pyproject.toml" ]; then
               echo "📥 Setting up Poetry environment..."
-              poetry env use python3.12
+              poetry env use python3.13
               poetry install
               source .venv/bin/activate
             elif [ -d ".venv" ]; then
