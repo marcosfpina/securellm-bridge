@@ -11,10 +11,8 @@ pub mod rate_limit;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use uuid::Uuid;
 
 pub use error::{Error, Result};
-pub use models::*;
 pub use request::Request;
 pub use response::{
     Choice, FinishReason, LogProbs, RateLimitInfo, Response, ResponseMetadata, 
