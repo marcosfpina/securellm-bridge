@@ -16,7 +16,7 @@ impl TtsEngine {
     pub async fn speak(&mut self, text: &str) -> Result<()> {
         // TTS crate is synchronous, run in blocking task
         let text = text.to_string();
-        let tts_clone = self.tts.clone();
+        let mut tts_clone = self.tts.clone();
         
         tokio::task::spawn_blocking(move || {
             tts_clone.speak(&text, false)

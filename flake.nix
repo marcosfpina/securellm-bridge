@@ -53,6 +53,7 @@
             alsa-lib
             pulseaudio
             espeak-ng
+            speechd
           ];
 
           # Build all workspace members
@@ -192,6 +193,7 @@
             alsa-lib
             pulseaudio
             espeak-ng
+            speechd
 
             # Development tools
             git
