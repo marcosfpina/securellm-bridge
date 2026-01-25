@@ -272,4 +272,4 @@ bash nix/scripts/validate-gitlab-duo.sh
 
 **Última atualização**: 2026-01-17
 **Status**: ✅ Completo e Pronto para Usar
-**Localização**: `nix/`
+**Localização**: `nix/`http://127.0.0.1:35237/webview/agentic-duo-chat/#/chats/

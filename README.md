@@ -194,7 +194,7 @@ Production-ready vector search with cost controls:
 - Query latency: p95 < 800ms
 - Cost: ~$0.002 per query (Gemini Flash)
 
-### 3. GCP Credit Optimization
+### 3. GCP Credit Optimizationhttp://127.0.0.1:35237/webview/agentic-duo-chat?mode=flow-mode&_csrf=1RygAGfP-1Gbe-qigH3ykaeMpzi4Ufm1mdW6iZoN043nKYidv-aE#
 
 Suite of scripts for maximizing trial credit ROI:
 
