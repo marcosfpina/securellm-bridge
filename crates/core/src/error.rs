@@ -65,6 +65,9 @@ pub enum Error {
     
     #[error("Internal error: {0}")]
     Internal(String),
+
+    #[error("Database error: {0}")]
+    Database(String),
     
     #[error(transparent)]
     Other(#[from] anyhow::Error),

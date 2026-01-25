@@ -1,0 +1,26 @@
+[package]
+name = "securellm-voice-agents"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Async
+tokio = { workspace = true }
+
+# Audio
+cpal = { workspace = true }
+tts = { workspace = true }
+hound = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Synchronization
+crossbeam = "0.8"

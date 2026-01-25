@@ -7,6 +7,7 @@ pub mod request;
 pub mod response;
 pub mod audit;
 pub mod rate_limit;
+pub mod intelligence; // New module
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -123,6 +124,20 @@ pub enum MessageRole {
 pub enum MessageContent {
     Text(String),
     Parts(Vec<ContentPart>),
+}
+
+impl MessageContent {
+    pub fn text(&self) -> String {
+        match self {
+            MessageContent::Text(t) => t.clone(),
+            MessageContent::Parts(parts) => {
+                parts.iter().map(|p| match p {
+                    ContentPart::Text { text } => text.as_str(),
+                    _ => "",
+                }).collect::<Vec<_>>().join(" ")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

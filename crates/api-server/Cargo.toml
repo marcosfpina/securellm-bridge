@@ -47,7 +47,7 @@ prometheus = "0.13"
 prometheus-client = "0.22"
 
 # Database
-sqlx = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "migrate", "macros"] }
+sqlx = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "migrate", "macros", "chrono", "uuid"] }
 
 # Redis for caching & rate limiting
 redis = { version = "0.26", features = ["tokio-comp", "connection-manager", "streams"] }
@@ -73,4 +73,9 @@ parking_lot = "0.12"
 reqwest = { workspace = true, features = ["json", "stream"] }
 
 [dev-dependencies]
+
 tokio-test = "0.4"
+
+wiremock = { workspace = true }
+
+serial_test = { workspace = true }

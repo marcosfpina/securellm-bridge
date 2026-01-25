@@ -4,6 +4,9 @@ pub mod deepseek;
 pub mod openai;
 pub mod anthropic;
 pub mod ollama;
+pub mod gemini;
+pub mod groq;
+pub mod nvidia;
 
 /// Provider-specific error types
 #[derive(Error, Debug)]

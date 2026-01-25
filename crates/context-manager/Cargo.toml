@@ -1,0 +1,30 @@
+[package]
+name = "securellm-context-manager"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Compression
+zstd = { workspace = true }
+flate2 = { workspace = true }
+
+# Tokenization
+tiktoken-rs = { workspace = true }
+
+# Cache
+dashmap = { workspace = true }
+lru = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }

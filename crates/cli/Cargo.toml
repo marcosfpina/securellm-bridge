@@ -23,6 +23,7 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 clap = { workspace = true }
+clap_complete = "4.5"
 toml = { workspace = true }
 directories = { workspace = true }
 
@@ -32,3 +33,6 @@ tokio = { workspace = true }
 # Additional CLI dependencies
 colored = "2.1"
 indicatif = "0.17"
+inquire = "0.7"
+uuid = { workspace = true }
+rpassword = "7.3"

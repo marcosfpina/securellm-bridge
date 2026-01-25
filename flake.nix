@@ -42,11 +42,17 @@
           nativeBuildInputs = with pkgs; [
             pkg-config
             rustToolchain
+            clang
+            libclang.lib
           ];
 
           buildInputs = with pkgs; [
             openssl
             sqlite
+            # Audio stack for voice agents
+            alsa-lib
+            pulseaudio
+            espeak-ng
           ];
 
           # Build all workspace members
@@ -168,6 +174,10 @@
             cargo-watch
             cargo-edit
 
+            # Compilation tools
+            clang
+            libclang.lib
+
             # Node.js for MCP server
             nodejs
             nodePackages.typescript
@@ -178,6 +188,11 @@
             openssl
             sqlite
 
+            # Audio dependencies for voice agents
+            alsa-lib
+            pulseaudio
+            espeak-ng
+
             # Development tools
             git
             ripgrep
@@ -185,6 +200,8 @@
           ];
 
           shellHook = ''
+            export LIBCLANG_PATH="${pkgs.libclang.lib}/lib"
+
             echo "🦀 SecureLLM Bridge Development Environment"
             echo "  Rust: $(rustc --version)"
             echo "  Node: $(node --version)"

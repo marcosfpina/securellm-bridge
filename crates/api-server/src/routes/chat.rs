@@ -147,19 +147,29 @@ pub async fn chat_completions(
         // Return complete response
         match create_completion(state.clone(), req.clone(), provider_name.clone(), model_name.clone()).await {
             Ok(response) => {
-                let duration_ms = start.elapsed().as_millis() as u64;
+                let duration = start.elapsed();
+                let duration_ms = duration.as_millis() as u64;
 
-                // Calculate cost
+                // 1. Calculate cost using Dynamic Pricing Engine
                 let prompt_tokens = response.usage.prompt_tokens;
                 let completion_tokens = response.usage.completion_tokens;
-                let cost = AuditLogger::estimate_cost(
+                
+                let cost = state.pricing_registry.calculate_cost(
                     &provider_name,
                     &model_name,
                     prompt_tokens,
-                    completion_tokens,
+                    completion_tokens
                 );
 
-                // Log response sent
+                // 2. Feed the Anomaly Detector (QoS Observatory)
+                state.qos_observatory.observe_request(
+                    &provider_name,
+                    &model_name,
+                    duration,
+                    false // Success
+                );
+
+                // 3. Log response sent with precise cost
                 let audit_event = AuditEvent {
                     timestamp: chrono::Utc::now(),
                     request_id,
@@ -184,7 +194,16 @@ pub async fn chat_completions(
                 Ok(Json(response).into_response())
             }
             Err(e) => {
-                let duration_ms = start.elapsed().as_millis() as u64;
+                let duration = start.elapsed();
+                let duration_ms = duration.as_millis() as u64;
+
+                // Report failure to QoS Observatory
+                state.qos_observatory.observe_request(
+                    &provider_name,
+                    &model_name,
+                    duration,
+                    true // Error
+                );
 
                 // Log request failed
                 if let Err(log_err) = state.audit_logger.log_request_failed(
@@ -213,42 +232,131 @@ fn parse_model_identifier(model: &str) -> ApiResult<(String, String)> {
     }
 }
 
-/// Create non-streaming completion
+use securellm_core::{
+    Request as CoreRequest,
+    Response as CoreResponse,
+    Message as CoreMessage,
+    MessageRole as CoreMessageRole,
+    MessageContent as CoreMessageContent,
+    request::RequestParameters,
+    intelligence::RoutingStrategy,
+};
+
+// ... (existing helper functions) ...
+
+/// Create non-streaming completion with Smart Fallback
 async fn create_completion(
-    _state: Arc<AppState>,
+    state: Arc<AppState>,
     req: ChatCompletionRequest,
-    _provider_name: String,
-    _model_name: String,
+    provider_name: String,
+    model_name: String,
 ) -> ApiResult<ChatCompletionResponse> {
-    // TODO: Implement actual provider call
-    // For now, return a mock response
-    
-    warn!("Using mock response - provider implementation pending");
+    let candidates = if provider_name != "auto" {
+        vec![(provider_name.clone(), model_name.clone())]
+    } else {
+        vec![
+            ("deepseek".to_string(), "deepseek-chat".to_string()),
+            ("gemini".to_string(), "gemini-2.0-flash".to_string()),
+            ("groq".to_string(), "llama-3.3-70b-versatile".to_string()),
+        ]
+    };
 
-    let completion_id = format!("chatcmpl-{}", uuid::Uuid::new_v4());
-    let created = chrono::Utc::now().timestamp();
+    let ranked_candidates = state.routing_engine.select_candidates(
+        candidates, 
+        RoutingStrategy::LowestCost
+    );
 
-    Ok(ChatCompletionResponse {
-        id: completion_id,
-        object: "chat.completion".to_string(),
-        created,
-        model: req.model.clone(),
-        choices: vec![ChatChoice {
-            index: 0,
-            message: ChatMessage {
-                role: "assistant".to_string(),
-                content: "This is a mock response. Provider implementation is pending.".to_string(),
-                name: None,
-            },
-            finish_reason: Some("stop".to_string()),
-        }],
-        usage: Usage {
-            prompt_tokens: 10,
-            completion_tokens: 20,
-            total_tokens: 30,
-        },
-    })
+    let mut last_error = None;
+
+    for (p_name, m_name) in ranked_candidates {
+        let provider = match state.provider_manager.get_provider(&p_name).await {
+            Some(p) => p,
+            None => continue,
+        };
+
+        tracing::info!("Routing request to {} (model: {})", p_name, m_name);
+
+        let mut core_req = CoreRequest::new(p_name.clone(), m_name.clone());
+        core_req.messages = req.messages.iter().cloned().map(convert_message).collect();
+        core_req.parameters = RequestParameters {
+            temperature: req.temperature,
+            top_p: req.top_p,
+            max_tokens: req.max_tokens,
+            stream: false,
+            stop: req.stop.clone(),
+            ..Default::default()
+        };
+
+        let start = Instant::now();
+        match provider.send_request(core_req).await {
+            Ok(core_resp) => {
+                // Success! Report to QoS and Circuit Breaker
+                state.qos_observatory.observe_request(&p_name, &m_name, start.elapsed(), false);
+                state.provider_manager.report_result(&p_name, true).await;
+                return Ok(convert_response(core_resp));
+            }
+            Err(e) => {
+                tracing::warn!("Provider {} failed: {}. Trying fallback...", p_name, e);
+                // Failure! Report to QoS and Circuit Breaker
+                state.qos_observatory.observe_request(&p_name, &m_name, start.elapsed(), true);
+                state.provider_manager.report_result(&p_name, false).await;
+                last_error = Some(e);
+                continue;
+            }
+        }
+    }
+
+    Err(crate::error::ApiError::InternalError(
+        format!("All providers failed. Last error: {:?}", last_error)
+    ))
 }
+
+fn convert_message(msg: ChatMessage) -> CoreMessage {
+    CoreMessage {
+        role: match msg.role.as_str() {
+            "system" => CoreMessageRole::System,
+            "user" => CoreMessageRole::User,
+            "assistant" => CoreMessageRole::Assistant,
+            "function" => CoreMessageRole::Function,
+            _ => CoreMessageRole::User, // Default fallback
+        },
+        content: CoreMessageContent::Text(msg.content),
+        name: msg.name,
+        metadata: None,
+    }
+}
+
+fn convert_response(resp: CoreResponse) -> ChatCompletionResponse {
+    ChatCompletionResponse {
+        id: resp.id,
+        object: "chat.completion".to_string(),
+        created: resp.metadata.created_at.timestamp(),
+        model: resp.model,
+        choices: resp.choices.into_iter().map(|c| ChatChoice {
+            index: c.index,
+            message: ChatMessage {
+                role: match c.message.role {
+                    CoreMessageRole::System => "system".to_string(),
+                    CoreMessageRole::User => "user".to_string(),
+                    CoreMessageRole::Assistant => "assistant".to_string(),
+                    CoreMessageRole::Function => "function".to_string(),
+                },
+                content: match c.message.content {
+                    CoreMessageContent::Text(t) => t,
+                    _ => "".to_string(), // TODO: Handle parts
+                },
+                name: c.message.name,
+            },
+            finish_reason: Some(format!("{:?}", c.finish_reason).to_lowercase()),
+        }).collect(),
+        usage: Usage {
+            prompt_tokens: resp.usage.prompt_tokens,
+            completion_tokens: resp.usage.completion_tokens,
+            total_tokens: resp.usage.total_tokens,
+        },
+    }
+}
+
 
 /// Create streaming completion
 async fn create_completion_stream(

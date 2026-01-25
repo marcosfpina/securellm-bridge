@@ -1,9 +1,12 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::{generate, Shell};
 use securellm_core::*;
 use securellm_providers::deepseek::{DeepSeekConfig, DeepSeekProvider};
-use std::time::Duration;
+use std::io;
 use tracing_subscriber;
+
+mod repl;
 
 #[derive(Parser)]
 #[command(name = "securellm")]
@@ -26,7 +29,7 @@ enum Commands {
     /// Send a chat request to an LLM provider
     Chat {
         /// Provider to use (deepseek, openai, anthropic, ollama)
-        #[arg(short, long)]
+        #[arg(short, long, value_parser = ["deepseek", "openai", "anthropic", "ollama"])]
         provider: String,
         
         /// Model to use
@@ -56,6 +59,7 @@ enum Commands {
     /// Check health of a provider
     Health {
         /// Provider to check
+        #[arg(value_parser = ["deepseek", "openai", "anthropic", "ollama"])]
         provider: String,
         
         /// API key
@@ -66,6 +70,7 @@ enum Commands {
     /// List available models from a provider
     Models {
         /// Provider to query
+        #[arg(value_parser = ["deepseek", "openai", "anthropic", "ollama"])]
         provider: String,
         
         /// API key
@@ -76,7 +81,34 @@ enum Commands {
     /// Show provider capabilities
     Info {
         /// Provider name
+        #[arg(value_parser = ["deepseek", "openai", "anthropic", "ollama"])]
         provider: String,
+    },
+
+    /// Start interactive chat session
+    Repl {
+        /// Provider to use
+        #[arg(short, long)]
+        provider: Option<String>,
+        
+        /// Model to use
+        #[arg(short, long)]
+        model: Option<String>,
+        
+        /// API key
+        #[arg(long, env = "SECURELLM_API_KEY")]
+        api_key: Option<String>,
+        
+        /// System prompt
+        #[arg(long)]
+        system: Option<String>,
+    },
+
+    /// Generate shell completion scripts
+    Completions {
+        /// Shell to generate completion for
+        #[arg(value_enum)]
+        shell: Shell,
     },
 }
 
@@ -120,10 +152,22 @@ async fn main() -> Result<()> {
         Commands::Info { provider } => {
             handle_info(provider).await?;
         }
+
+        Commands::Repl { provider, model, api_key, system } => {
+            repl::run_repl(provider, model, api_key, system).await?;
+        }
+
+        Commands::Completions { shell } => {
+            let mut cmd = Cli::command();
+            let name = cmd.get_name().to_string();
+            generate(shell, &mut cmd, name, &mut io::stdout());
+        }
     }
     
     Ok(())
 }
+
+// Handler functions
 
 async fn handle_chat(
     provider: String,
@@ -148,7 +192,8 @@ async fn handle_chat(
             let config = DeepSeekConfig::new(api_key)
                 .with_logging(true);
             
-            let provider = DeepSeekProvider::new(config)?;
+            let provider = DeepSeekProvider::new(config)
+                .map_err(|e| anyhow::anyhow!("Provider error: {}", e))?;
             
             // Build request
             let mut request = Request::new("deepseek", model)
@@ -167,12 +212,13 @@ async fn handle_chat(
             
             // Send request
             println!("⏳ Sending request...");
-            let response = provider.send_request(request).await?;
+            let response = provider.send_request(request).await
+                .map_err(|e| anyhow::anyhow!("Request failed: {}", e))?;
             
             // Print response
             println!();
             println!("✅ Response:");
-            println!("{}", response.text()?);
+            println!("{}", response.text().map_err(|e| anyhow::anyhow!(e))?);
             println!();
             println!("📊 Usage:");
             println!("  Prompt tokens: {}", response.usage.prompt_tokens);
@@ -196,10 +242,12 @@ async fn handle_health(provider: String, api_key: Option<String>) -> Result<()> 
     match provider.as_str() {
         "deepseek" => {
             let config = DeepSeekConfig::new(api_key);
-            let provider = DeepSeekProvider::new(config)?;
+            let provider = DeepSeekProvider::new(config)
+                .map_err(|e| anyhow::anyhow!("Provider error: {}", e))?;
             
             println!("🏥 Checking DeepSeek health...");
-            let health = provider.health_check().await?;
+            let health = provider.health_check().await
+                .map_err(|e| anyhow::anyhow!("Health check failed: {}", e))?;
             
             let status_icon = match health.status {
                 HealthStatus::Healthy => "✅",
@@ -229,12 +277,15 @@ async fn handle_models(provider: String, api_key: Option<String>) -> Result<()> 
     match provider.as_str() {
         "deepseek" => {
             let config = DeepSeekConfig::new(api_key);
-            let provider = DeepSeekProvider::new(config)?;
+            let provider = DeepSeekProvider::new(config)
+                .map_err(|e| anyhow::anyhow!("Provider error: {}", e))?;
             
             println!("📋 Available DeepSeek models:");
             println!();
             
-            let models = provider.list_models().await?;
+            let models = provider.list_models().await
+                .map_err(|e| anyhow::anyhow!("List models failed: {}", e))?;
+                
             for model in models {
                 println!("🤖 {}", model.id);
                 println!("   Name: {}", model.name);
@@ -267,7 +318,8 @@ async fn handle_info(provider: String) -> Result<()> {
         "deepseek" => {
             // Create a dummy provider just to get capabilities
             let config = DeepSeekConfig::new("dummy");
-            let provider = DeepSeekProvider::new(config)?;
+            let provider = DeepSeekProvider::new(config)
+                .map_err(|e| anyhow::anyhow!("Provider error: {}", e))?;
             
             let caps = provider.capabilities();
             
