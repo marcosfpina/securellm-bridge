@@ -1,7 +1,7 @@
 use anyhow::Result;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
-use inquire::{Select, Text};
+use inquire::Select;
 use securellm_core::{Message, MessageContent, MessageRole, Request, LLMProvider};
 use securellm_providers::deepseek::{DeepSeekConfig, DeepSeekProvider};
 use std::io::{self, Write};

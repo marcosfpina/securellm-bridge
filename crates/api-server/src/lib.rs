@@ -25,6 +25,7 @@ pub mod state;
 pub mod routes;
 pub mod middleware;
 pub mod services;
+pub mod dashboard;
 
 use config::Config;
 use state::AppState;
