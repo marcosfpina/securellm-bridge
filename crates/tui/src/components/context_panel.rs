@@ -32,26 +32,34 @@ impl ContextPanel {
     }
 
     pub fn render(&self, f: &mut Frame, area: Rect) {
+        use crate::themes::catppuccin::*;
+
         let content = vec![
             Line::from(vec![
-                Span::styled("Tokens: ", Style::default().fg(Color::Gray)),
+                Span::styled("◆ ", Style::default().fg(SECONDARY)),
+                Span::styled("Tokens: ", Style::default().fg(FG_MUTED)),
                 Span::styled(
                     format!("{}", self.total_tokens),
-                    Style::default().fg(Color::Cyan),
+                    Style::default().fg(GRADIENT_BLUE).add_modifier(ratatui::style::Modifier::BOLD),
                 ),
             ]),
+            Line::from(""),
             Line::from(vec![
-                Span::styled("Compression: ", Style::default().fg(Color::Gray)),
+                Span::styled("◆ ", Style::default().fg(SUCCESS)),
+                Span::styled("Compression", Style::default().fg(FG_MUTED)),
+Span::raw(": "),
                 Span::styled(
                     format!("{:.1}x", self.compression_ratio),
-                    Style::default().fg(Color::Green),
+                    Style::default().fg(GRADIENT_EMERALD).add_modifier(ratatui::style::Modifier::BOLD),
                 ),
             ]),
+            Line::from(""),
             Line::from(vec![
-                Span::styled("Cache Hits: ", Style::default().fg(Color::Gray)),
+                Span::styled("◆ ", Style::default().fg(WARNING)),
+                Span::styled("Cache Hits: ", Style::default().fg(FG_MUTED)),
                 Span::styled(
                     format!("{}", self.cache_hits),
-                    Style::default().fg(Color::Yellow),
+                    Style::default().fg(GRADIENT_ORANGE).add_modifier(ratatui::style::Modifier::BOLD),
                 ),
             ]),
         ];
@@ -59,7 +67,12 @@ impl ContextPanel {
         let paragraph = Paragraph::new(content).block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("📊 Context Metrics"),
+                .border_style(Style::default().fg(BORDER))
+                .title(vec![
+                    Span::styled("📊 ", Style::default().fg(PRIMARY)),
+                    Span::styled("Context", Style::default().fg(FG_PRIMARY).add_modifier(ratatui::style::Modifier::BOLD)),
+                ])
+                .style(Style::default().bg(BG_CARD)),
         );
 
         f.render_widget(paragraph, area);

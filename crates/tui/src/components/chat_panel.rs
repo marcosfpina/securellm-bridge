@@ -38,20 +38,24 @@ impl ChatPanel {
     }
 
     pub fn render(&self, f: &mut Frame, area: Rect) {
+        use crate::themes::catppuccin::*;
+
         let items: Vec<ListItem> = self
             .messages
             .iter()
             .map(|msg| {
-                let role_style = match msg.role.as_str() {
-                    "user" => Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-                    "assistant" => Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
-                    "system" => Style::default().fg(Color::Yellow),
-                    _ => Style::default(),
+                let (role_icon, role_style) = match msg.role.as_str() {
+                    "user" => ("▶", Style::default().fg(GRADIENT_BLUE).add_modifier(Modifier::BOLD)),
+                    "assistant" => ("◆", Style::default().fg(GRADIENT_PURPLE).add_modifier(Modifier::BOLD)),
+                    "system" => ("●", Style::default().fg(WARNING)),
+                    _ => ("○", Style::default().fg(FG_MUTED)),
                 };
 
                 let content = Line::from(vec![
-                    Span::styled(format!("[{}] ", msg.role), role_style),
-                    Span::raw(&msg.content),
+                    Span::styled(role_icon, role_style.clone()),
+                    Span::raw(" "),
+                    Span::styled(format!("{} ", msg.role), role_style.add_modifier(Modifier::DIM)),
+                    Span::styled(&msg.content, Style::default().fg(FG_PRIMARY)),
                 ]);
 
                 ListItem::new(content)
@@ -61,8 +65,12 @@ impl ChatPanel {
         let list = List::new(items).block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("💬 Chat")
-                .style(Style::default()),
+                .border_style(Style::default().fg(BORDER))
+                .title(vec![
+                    Span::styled("💬 ", Style::default().fg(PRIMARY)),
+                    Span::styled("Chat", Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD)),
+                ])
+                .style(Style::default().bg(BG_CARD)),
         );
 
         f.render_widget(list, area);

@@ -17,11 +17,13 @@ impl StatusBar {
     }
 
     pub fn render(&self, f: &mut Frame, area: Rect, app: &TuiApp) {
+        use crate::themes::catppuccin::*;
+
         let mode_color = match app.input_mode {
-            crate::InputMode::Normal => Color::Blue,
-            crate::InputMode::Insert => Color::Green,
-            crate::InputMode::Command => Color::Yellow,
-            crate::InputMode::Voice => Color::Red,
+            crate::InputMode::Normal => SECONDARY,      // Blue
+            crate::InputMode::Insert => SUCCESS,         // Green
+            crate::InputMode::Command => WARNING,        // Orange
+            crate::InputMode::Voice => GRADIENT_PINK,    // Pink
         };
 
         let content = vec![
@@ -29,31 +31,47 @@ impl StatusBar {
                 Span::styled(
                     format!(" {} ", app.input_mode.as_str()),
                     Style::default()
-                        .fg(Color::Black)
+                        .fg(BG_BASE)
                         .bg(mode_color)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::raw(" "),
-                Span::styled("Provider: ", Style::default().fg(Color::Gray)),
-                Span::styled("DeepSeek", Style::default().fg(Color::Cyan)),
-                Span::raw(" │ "),
-                Span::styled("Model: ", Style::default().fg(Color::Gray)),
-                Span::styled("deepseek-chat", Style::default().fg(Color::Cyan)),
-                Span::raw(" │ "),
-                Span::styled("Tokens: ", Style::default().fg(Color::Gray)),
-                Span::styled("1.2K", Style::default().fg(Color::Green)),
+                Span::raw("  "),
+                Span::styled("◆ ", Style::default().fg(PRIMARY)),
+                Span::styled("Provider: ", Style::default().fg(FG_MUTED)),
+                Span::styled("LlamaCpp", Style::default().fg(GRADIENT_PURPLE).add_modifier(Modifier::BOLD)),
+                Span::raw("  "),
+                Span::styled("│", Style::default().fg(BORDER)),
+                Span::raw("  "),
+                Span::styled("◆ ", Style::default().fg(SECONDARY)),
+                Span::styled("Model: ", Style::default().fg(FG_MUTED)),
+                Span::styled("llamacppturbo:8081", Style::default().fg(GRADIENT_BLUE).add_modifier(Modifier::BOLD)),
+                Span::raw("  "),
+                Span::styled("│", Style::default().fg(BORDER)),
+                Span::raw("  "),
+                Span::styled("◆ ", Style::default().fg(SUCCESS)),
+                Span::styled("Tokens: ", Style::default().fg(FG_MUTED)),
+                Span::styled("1.2K", Style::default().fg(GRADIENT_EMERALD).add_modifier(Modifier::BOLD)),
             ]),
             Line::from(vec![
                 Span::raw(" "),
+                Span::styled("▸ ", Style::default().fg(PRIMARY)),
                 if !app.input_buffer.is_empty() {
-                    Span::styled(&app.input_buffer, Style::default().fg(Color::White))
+                    Span::styled(&app.input_buffer, Style::default().fg(FG_PRIMARY))
                 } else {
-                    Span::styled("Press 'i' to insert, 'v' for voice, ':' for commands, 'q' to quit", Style::default().fg(Color::DarkGray))
+                    Span::styled(
+                        "Press 'i' to insert • 'v' for voice • ':' for commands • 'q' to quit",
+                        Style::default().fg(FG_MUTED).add_modifier(Modifier::ITALIC)
+                    )
                 },
             ]),
         ];
 
-        let paragraph = Paragraph::new(content).block(Block::default().borders(Borders::ALL));
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(BORDER))
+            .style(Style::default().bg(BG_CARD));
+
+        let paragraph = Paragraph::new(content).block(block);
 
         f.render_widget(paragraph, area);
     }

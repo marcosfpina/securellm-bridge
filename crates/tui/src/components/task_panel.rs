@@ -23,26 +23,28 @@ impl TaskPanel {
     }
 
     pub fn render(&self, f: &mut Frame, area: Rect) {
+        use crate::themes::catppuccin::*;
+
         let items: Vec<ListItem> = self
             .tasks
             .iter()
             .map(|task| {
                 let (state_icon, state_color) = match &task.state {
-                    TaskState::Pending => ("⏸", Color::Gray),
-                    TaskState::Running { .. } => ("▶", Color::Blue),
-                    TaskState::Completed { .. } => ("✓", Color::Green),
-                    TaskState::Failed { .. } => ("✗", Color::Red),
-                    TaskState::Cancelled { .. } => ("○", Color::Yellow),
+                    TaskState::Pending => ("⏸", FG_MUTED),
+                    TaskState::Running { .. } => ("▶", SUCCESS),
+                    TaskState::Completed { .. } => ("✓", GRADIENT_EMERALD),
+                    TaskState::Failed { .. } => ("✗", ERROR),
+                    TaskState::Cancelled { .. } => ("○", WARNING),
                 };
 
                 let progress_bar = Self::render_progress_bar(task.progress, 10);
 
                 let content = Line::from(vec![
-                    Span::styled(state_icon, Style::default().fg(state_color)),
+                    Span::styled(state_icon, Style::default().fg(state_color).add_modifier(Modifier::BOLD)),
                     Span::raw(" "),
-                    Span::raw(&task.name),
+                    Span::styled(&task.name, Style::default().fg(FG_PRIMARY)),
                     Span::raw(" "),
-                    Span::styled(progress_bar, Style::default().fg(Color::Cyan)),
+                    Span::styled(progress_bar, Style::default().fg(SECONDARY)),
                 ]);
 
                 ListItem::new(content)
@@ -52,8 +54,12 @@ impl TaskPanel {
         let list = List::new(items).block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("📋 Tasks")
-                .style(Style::default()),
+                .border_style(Style::default().fg(BORDER))
+                .title(vec![
+                    Span::styled("📋 ", Style::default().fg(SECONDARY)),
+                    Span::styled("Tasks", Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD)),
+                ])
+                .style(Style::default().bg(BG_CARD)),
         );
 
         f.render_widget(list, area);

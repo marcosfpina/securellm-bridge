@@ -18,10 +18,14 @@ struct Cli {
     
     /// Configuration file path
     #[arg(short, long)]
-    config: Option<std::path::PathBuf>,
+    config: Option<String>,
     
+    /// Launch TUI mode (Terminal User Interface)
+    #[arg(long)]
+    tui: bool,
+
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -115,55 +119,52 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    
-    // Setup logging
-    let log_level = if cli.verbose {
-        tracing::Level::DEBUG
+
+    // Initialize logging
+    let filter = if cli.verbose {
+        "debug"
     } else {
-        tracing::Level::INFO
+        "info"
     };
     
     tracing_subscriber::fmt()
-        .with_max_level(log_level)
-        .with_target(false)
+        .with_env_filter(filter)
         .init();
-    
+
+    // Check if TUI mode is requested
+    if cli.tui {
+        tracing::info!("Launching TUI mode");
+        return securellm_tui::run().await;
+    }
+
+    // Handle CLI commands
     match cli.command {
-        Commands::Chat {
-            provider,
-            model,
-            message,
-            api_key,
-            system,
-            max_tokens,
-            temperature,
-        } => {
+        Some(Commands::Chat { provider, model, message, api_key, system, max_tokens, temperature }) => {
             handle_chat(provider, model, message, api_key, system, max_tokens, temperature).await?;
         }
-        
-        Commands::Health { provider, api_key } => {
+        Some(Commands::Health { provider, api_key }) => {
             handle_health(provider, api_key).await?;
         }
-        
-        Commands::Models { provider, api_key } => {
+        Some(Commands::Models { provider, api_key }) => {
             handle_models(provider, api_key).await?;
         }
-        
-        Commands::Info { provider } => {
+        Some(Commands::Info { provider }) => {
             handle_info(provider).await?;
         }
-
-        Commands::Repl { provider, model, api_key, system } => {
+        Some(Commands::Repl { provider, model, api_key, system }) => {
             repl::run_repl(provider, model, api_key, system).await?;
         }
-
-        Commands::Completions { shell } => {
+        Some(Commands::Completions { shell }) => {
             let mut cmd = Cli::command();
-            let name = cmd.get_name().to_string();
-            generate(shell, &mut cmd, name, &mut io::stdout());
+            generate(shell, &mut cmd, "securellm", &mut io::stdout());
+        }
+        None => {
+            // No command provided - show help
+            let mut cmd = Cli::command();
+            cmd.print_help()?;
         }
     }
-    
+
     Ok(())
 }
 

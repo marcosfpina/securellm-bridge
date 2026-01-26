@@ -9,6 +9,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "agent-tui"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "crossterm 0.28.1",
+ "ratatui",
+ "securellm-core",
+ "securellm-providers",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2887,6 +2900,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1004a344b30a54e2ee58d66a71b32d2db2feb0a31f9a2d302bf0536f15de2a33"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "quinn"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3392,6 +3414,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "securellm-agents"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "hashbrown 0.14.5",
+ "lazy_static",
+ "lru",
+ "quick-xml",
+ "regex",
+ "securellm-core",
+ "securellm-providers",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "securellm-api-server"
 version = "0.1.0"
 dependencies = [
@@ -3453,6 +3498,7 @@ dependencies = [
  "securellm-core",
  "securellm-providers",
  "securellm-security",
+ "securellm-tui",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -3563,8 +3609,10 @@ dependencies = [
  "chrono",
  "crossterm 0.28.1",
  "ratatui",
+ "securellm-agents",
  "securellm-context-manager",
  "securellm-core",
+ "securellm-providers",
  "securellm-task-manager",
  "securellm-voice-agents",
  "serde",

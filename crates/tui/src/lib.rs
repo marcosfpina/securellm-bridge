@@ -1,7 +1,6 @@
 //! TUI Application for SecureLLM Bridge
 //!
-//! Terminal User Interface with multi-panel layout for chat,
-//! task management, context metrics, and logging.
+//! Zellij-style multiplexed interface with tabs, splits, and modern aesthetics
 
 use anyhow::Result;
 use crossterm::{
@@ -12,9 +11,9 @@ use crossterm::{
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, BorderType, Tabs},
     Frame, Terminal,
 };
 use std::io;
@@ -22,11 +21,15 @@ use std::io;
 mod app;
 mod components;
 mod input_mode;
+mod multiplex;
+mod themes;
 
 pub use app::TuiApp;
 pub use input_mode::InputMode;
+pub use multiplex::{TabBar, Pane};
+pub use themes::catppuccin::*;
 
-use components::{ChatPanel, ContextPanel, LogsPanel, StatusBar, TaskPanel};
+use components::{StatusBar, TabBarWidget};
 
 /// Run the TUI application
 pub async fn run() -> Result<()> {
@@ -76,19 +79,27 @@ async fn run_app<B: ratatui::backend::Backend>(
 fn render_ui(f: &mut Frame, app: &TuiApp) {
     let size = f.area();
 
-    // Main layout: [Top Area] [Status Bar]
-    let chunks = Layout::default()
+    // Main layout: [Tab Bar] [Main Area] [Status Bar]
+    let main_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(0), Constraint::Length(3)])
+        .constraints([
+            Constraint::Length(3),  // Tab bar
+            Constraint::Min(0),     // Main content
+            Constraint::Length(3),  // Status bar
+        ])
         .split(size);
 
-    // Top area: [Left Panel] [Right Panel]
+    // Render tab bar
+    let tab_names: Vec<String> = app.tab_bar.tabs.iter().map(|t| t.name.clone()).collect();
+    TabBarWidget::render(f, main_chunks[0], &tab_names, app.tab_bar.active_index);
+
+    // Top area: [Left] [Middle] [Right]
     let top_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-        .split(chunks[0]);
+        .constraints([Constraint::Percentage(40), Constraint::Percentage(30), Constraint::Percentage(30)])
+        .split(main_chunks[1]);
 
-    // Left panel: [Chat] [Context Metrics]
+    // Left panel: [Chat] [Context]
     let left_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
@@ -98,14 +109,20 @@ fn render_ui(f: &mut Frame, app: &TuiApp) {
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(top_chunks[1]);
+        .split(top_chunks[2]);
 
     // Render components
     app.chat_panel.render(f, left_chunks[0]);
     app.context_panel.render(f, left_chunks[1]);
+    
+    // Show tool panel if agent mode is enabled
+    if app.agent_mode {
+        app.tool_panel.render(f, top_chunks[1]);
+    }
+    
     app.task_panel.render(f, right_chunks[0]);
     app.logs_panel.render(f, right_chunks[1]);
-    app.status_bar.render(f, chunks[1], app);
+    app.status_bar.render(f, main_chunks[2], app);
 }
 
 async fn handle_input(app: &mut TuiApp, key: event::KeyEvent) -> Result<bool> {
@@ -114,6 +131,11 @@ async fn handle_input(app: &mut TuiApp, key: event::KeyEvent) -> Result<bool> {
         match key.code {
             KeyCode::Char('c') => return Ok(true), // Quit
             KeyCode::Char('q') => return Ok(true),
+            KeyCode::Char('t') => {
+                // Cycle tabs
+                app.tab_bar.next_tab();
+                return Ok(false);
+            }
             _ => {}
         }
     }
@@ -138,6 +160,9 @@ async fn handle_normal_mode(app: &mut TuiApp, key: event::KeyEvent) -> Result<()
         }
         KeyCode::Char(':') => {
             app.input_mode = InputMode::Command;
+        }
+        KeyCode::Char('a') => {
+            app.toggle_agent_mode();
         }
         KeyCode::Char('v') => {
             app.toggle_voice().await?;

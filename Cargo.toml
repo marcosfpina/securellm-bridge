@@ -3,12 +3,14 @@ members = [
     "crates/core",
     "crates/security",
     "crates/providers",
+    "crates/agents",
     "crates/cli",
     "crates/api-server",
     "crates/tui",
     "crates/task-manager",
     "crates/context-manager",
     "crates/voice-agents",
+    "crates/agent-tui",
 ]
 resolver = "2"
 

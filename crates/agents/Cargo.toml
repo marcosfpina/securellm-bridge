@@ -1,0 +1,39 @@
+[package]
+name = "securellm-agents"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Local crates
+securellm-core = { path = "../core" }
+
+# Async runtime
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+# Parsing (optimized)
+quick-xml = "0.31"
+serde = { workspace = true }
+serde_json = { workspace = true }
+regex = "1.10"
+lazy_static = "1.4"
+
+# Caching & Performance
+lru = "0.12"
+hashbrown = "0.14"
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Utilities
+chrono = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+securellm-providers = { path = "../providers" }
+tracing-subscriber = "0.3"
