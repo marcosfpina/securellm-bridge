@@ -1,6 +1,6 @@
 //! LRU cache for tool results (performance optimization)
 
-use crate::{ToolResult};
+use crate::ToolResult;
 use lru::LruCache;
 use std::num::NonZeroUsize;
 use std::sync::Mutex;
@@ -17,27 +17,27 @@ impl ResultCache {
             cache: Mutex::new(LruCache::new(NonZeroUsize::new(capacity).unwrap())),
         }
     }
-    
+
     /// Get cached result (O(1) average)
     pub fn get(&self, key: &str) -> Option<ToolResult> {
         self.cache.lock().unwrap().get(key).cloned()
     }
-    
+
     /// Put result in cache (O(1) average)
     pub fn put(&self, key: String, value: ToolResult) {
         self.cache.lock().unwrap().put(key, value);
     }
-    
+
     /// Check if key exists (O(1))
     pub fn contains(&self, key: &str) -> bool {
         self.cache.lock().unwrap().contains(key)
     }
-    
+
     /// Clear all cached results
     pub fn clear(&self) {
         self.cache.lock().unwrap().clear();
     }
-    
+
     /// Get cache hit rate statistics
     pub fn stats(&self) -> CacheStats {
         let cache = self.cache.lock().unwrap();

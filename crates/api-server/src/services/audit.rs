@@ -22,7 +22,7 @@ impl AuditSink for SqliteAuditSink {
         let request_id = event.request_id.to_string();
         let event_type = format!("{:?}", event.event_type);
         let status = format!("{:?}", event.status);
-        
+
         let metadata = serde_json::json!({});
 
         sqlx::query(
@@ -34,7 +34,7 @@ impl AuditSink for SqliteAuditSink {
                 client_ip, metadata
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(id)
         .bind(request_id)

@@ -203,6 +203,7 @@
 
           shellHook = ''
             export LIBCLANG_PATH="${pkgs.libclang.lib}/lib"
+            export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH"
 
             echo "🦀 SecureLLM Bridge Development Environment"
             echo "  Rust: $(rustc --version)"

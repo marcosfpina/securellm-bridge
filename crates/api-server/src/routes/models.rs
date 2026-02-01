@@ -1,8 +1,4 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -47,7 +43,7 @@ pub struct ListModelsResponse {
 }
 
 /// GET /v1/models - List all available models
-/// 
+///
 /// This endpoint returns all models from all configured providers
 /// in OpenAI-compatible format.
 pub async fn list_models(
@@ -69,7 +65,7 @@ pub async fn list_models(
         FROM models
         WHERE enabled = 1
         ORDER BY provider, model_id
-        "#
+        "#,
     )
     .fetch_all(&state.db_pool)
     .await?;
@@ -111,7 +107,7 @@ pub async fn list_models(
 }
 
 /// POST /api/models/sync - Trigger model discovery
-/// 
+///
 /// This endpoint forces a rescan of all providers to discover new models.
 pub async fn sync_models(
     State(_state): State<Arc<AppState>>,
@@ -120,7 +116,7 @@ pub async fn sync_models(
 
     // TODO: Implement model discovery service trigger
     // For now, return success
-    
+
     Ok((
         StatusCode::OK,
         Json(serde_json::json!({

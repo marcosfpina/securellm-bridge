@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 mod audio_capture;
 mod audio_playback;
 mod tts_engine;
+mod wyoming;
 
 pub use audio_capture::AudioCapture;
 pub use audio_playback::AudioPlayback;
@@ -78,7 +79,7 @@ mod tests {
     async fn test_speak() {
         let agent = VoiceAgent::new().unwrap();
         let result = agent.speak("Test message").await;
-        
+
         // May fail if no TTS backend available in test environment
         // This is acceptable for CI
         if result.is_err() {

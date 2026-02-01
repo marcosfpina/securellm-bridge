@@ -25,7 +25,8 @@ pub type Result<T> = std::result::Result<T, RateLimitError>;
 /// Rate limiter using token bucket algorithm
 #[derive(Clone)]
 pub struct RateLimiter {
-    limiters: Arc<dashmap::DashMap<String, Arc<GovernorLimiter<NotKeyed, InMemoryState, DefaultClock>>>>,
+    limiters:
+        Arc<dashmap::DashMap<String, Arc<GovernorLimiter<NotKeyed, InMemoryState, DefaultClock>>>>,
 }
 
 impl RateLimiter {
@@ -42,17 +43,10 @@ impl RateLimiter {
     /// * `provider` - Provider name (e.g., "deepseek", "openai")
     /// * `requests_per_minute` - Maximum requests per minute
     /// * `burst_size` - Maximum burst size (how many requests can be made in quick succession)
-    pub fn configure_provider(
-        &self,
-        provider: String,
-        requests_per_minute: u32,
-        burst_size: u32,
-    ) {
-        let quota = Quota::per_minute(
-            NonZeroU32::new(requests_per_minute).expect("RPM must be > 0")
-        ).allow_burst(
-            NonZeroU32::new(burst_size).expect("Burst must be > 0")
-        );
+    pub fn configure_provider(&self, provider: String, requests_per_minute: u32, burst_size: u32) {
+        let quota =
+            Quota::per_minute(NonZeroU32::new(requests_per_minute).expect("RPM must be > 0"))
+                .allow_burst(NonZeroU32::new(burst_size).expect("Burst must be > 0"));
 
         let limiter = Arc::new(GovernorLimiter::direct(quota));
         self.limiters.insert(provider, limiter);
@@ -62,7 +56,9 @@ impl RateLimiter {
     ///
     /// Returns Ok(()) if request is allowed, Err if rate limit exceeded
     pub async fn check_limit(&self, provider: &str) -> Result<()> {
-        let limiter = self.limiters.get(provider)
+        let limiter = self
+            .limiters
+            .get(provider)
             .ok_or_else(|| RateLimitError::NotConfigured(provider.to_string()))?;
 
         match limiter.check() {
@@ -73,7 +69,9 @@ impl RateLimiter {
 
     /// Check without consuming token (for pre-flight checks)
     pub async fn check_would_allow(&self, provider: &str) -> Result<bool> {
-        let limiter = self.limiters.get(provider)
+        let limiter = self
+            .limiters
+            .get(provider)
             .ok_or_else(|| RateLimitError::NotConfigured(provider.to_string()))?;
 
         Ok(limiter.check().is_ok())

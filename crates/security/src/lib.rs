@@ -1,8 +1,8 @@
 // Re-export core types
-pub use securellm_core::{Error as SecurityError, Result, Request, Response};
+pub use securellm_core::{Error as SecurityError, Request, Response, Result};
 
-pub mod tls;
 pub mod crypto;
-pub mod secrets;
 pub mod sandbox;
 pub mod sanitizer;
+pub mod secrets;
+pub mod tls;

@@ -71,7 +71,7 @@ impl TaskStore {
     }
 
     pub async fn load_task(&self, id: &str) -> Result<Option<Task>> {
-        let row: Option<(String, String, Option<String>, i64, String, f64, String, String, String)> = 
+        let row: Option<(String, String, Option<String>, i64, String, f64, String, String, String)> =
             sqlx::query_as(
                 "SELECT id, name, description, priority, state, progress, created_at, updated_at, metadata FROM tasks WHERE id = ?"
             )
@@ -79,7 +79,18 @@ impl TaskStore {
             .fetch_optional(&self.pool)
             .await?;
 
-        if let Some((id, name, description, priority, state_json, progress, created_at, updated_at, metadata_json)) = row {
+        if let Some((
+            id,
+            name,
+            description,
+            priority,
+            state_json,
+            progress,
+            created_at,
+            updated_at,
+            metadata_json,
+        )) = row
+        {
             Ok(Some(Task {
                 id: uuid::Uuid::parse_str(&id)?,
                 name,
@@ -87,8 +98,10 @@ impl TaskStore {
                 priority: priority as u8,
                 state: serde_json::from_str(&state_json)?,
                 progress: progress as f32,
-                created_at: chrono::DateTime::parse_from_rfc3339(&created_at)?.with_timezone(&chrono::Utc),
-                updated_at: chrono::DateTime::parse_from_rfc3339(&updated_at)?.with_timezone(&chrono::Utc),
+                created_at: chrono::DateTime::parse_from_rfc3339(&created_at)?
+                    .with_timezone(&chrono::Utc),
+                updated_at: chrono::DateTime::parse_from_rfc3339(&updated_at)?
+                    .with_timezone(&chrono::Utc),
                 metadata: serde_json::from_str(&metadata_json)?,
             }))
         } else {
@@ -97,7 +110,7 @@ impl TaskStore {
     }
 
     pub async fn load_all_tasks(&self) -> Result<Vec<Task>> {
-        let rows: Vec<(String, String, Option<String>, i64, String, f64, String, String, String)> = 
+        let rows: Vec<(String, String, Option<String>, i64, String, f64, String, String, String)> =
             sqlx::query_as(
                 "SELECT id, name, description, priority, state, progress, created_at, updated_at, metadata FROM tasks ORDER BY created_at DESC"
             )
@@ -105,19 +118,33 @@ impl TaskStore {
             .await?;
 
         rows.into_iter()
-            .map(|(id, name, description, priority, state_json, progress, created_at, updated_at, metadata_json)| {
-                Ok(Task {
-                    id: uuid::Uuid::parse_str(&id)?,
+            .map(
+                |(
+                    id,
                     name,
                     description,
-                    priority: priority as u8,
-                    state: serde_json::from_str(&state_json)?,
-                    progress: progress as f32,
-                    created_at: chrono::DateTime::parse_from_rfc3339(&created_at)?.with_timezone(&chrono::Utc),
-                    updated_at: chrono::DateTime::parse_from_rfc3339(&updated_at)?.with_timezone(&chrono::Utc),
-                    metadata: serde_json::from_str(&metadata_json)?,
-                })
-            })
+                    priority,
+                    state_json,
+                    progress,
+                    created_at,
+                    updated_at,
+                    metadata_json,
+                )| {
+                    Ok(Task {
+                        id: uuid::Uuid::parse_str(&id)?,
+                        name,
+                        description,
+                        priority: priority as u8,
+                        state: serde_json::from_str(&state_json)?,
+                        progress: progress as f32,
+                        created_at: chrono::DateTime::parse_from_rfc3339(&created_at)?
+                            .with_timezone(&chrono::Utc),
+                        updated_at: chrono::DateTime::parse_from_rfc3339(&updated_at)?
+                            .with_timezone(&chrono::Utc),
+                        metadata: serde_json::from_str(&metadata_json)?,
+                    })
+                },
+            )
             .collect()
     }
 }

@@ -1,13 +1,13 @@
 // Enterprise-grade audit logging module
 // Provides comprehensive audit trail for compliance (GDPR, SOC2, HIPAA)
 
-use serde::{Deserialize, Serialize};
-use tracing::{info, warn};
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
 use crate::Result;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tracing::{info, warn};
+use uuid::Uuid;
 
 /// Pluggable sink for audit logs (SQLite, GCP, Kafka, etc)
 #[async_trait]
@@ -94,10 +94,7 @@ impl AuditLogger {
     }
 
     /// Log when a response is sent successfully
-    pub async fn log_response_sent(
-        &self,
-        event: &AuditEvent,
-    ) -> Result<()> {
+    pub async fn log_response_sent(&self, event: &AuditEvent) -> Result<()> {
         info!(
             audit.event = "response_sent",
             audit.request_id = %event.request_id,
@@ -183,8 +180,8 @@ impl AuditLogger {
         prompt_tokens: u32,
         completion_tokens: u32,
     ) -> f64 {
-       // ... logic handled by PricingRegistry now, but kept for legacy/test ...
-       0.0 
+        // ... logic handled by PricingRegistry now, but kept for legacy/test ...
+        0.0
     }
 }
 

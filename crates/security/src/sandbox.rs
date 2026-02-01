@@ -8,13 +8,13 @@ use crate::{Result, SecurityError};
 pub struct SandboxConfig {
     /// Maximum memory usage in bytes
     pub max_memory: Option<u64>,
-    
+
     /// Maximum CPU time in seconds
     pub max_cpu_time: Option<u64>,
-    
+
     /// Network access allowed
     pub network_enabled: bool,
-    
+
     /// Filesystem access mode
     pub filesystem_access: FilesystemAccess,
 }
@@ -23,10 +23,10 @@ pub struct SandboxConfig {
 pub enum FilesystemAccess {
     /// No filesystem access
     None,
-    
+
     /// Read-only access to specific paths
     ReadOnly,
-    
+
     /// Full filesystem access (not recommended)
     Full,
 }
@@ -35,38 +35,38 @@ impl SandboxConfig {
     pub fn strict() -> Self {
         Self {
             max_memory: Some(512 * 1024 * 1024), // 512 MB
-            max_cpu_time: Some(30), // 30 seconds
+            max_cpu_time: Some(30),              // 30 seconds
             network_enabled: false,
             filesystem_access: FilesystemAccess::None,
         }
     }
-    
+
     pub fn relaxed() -> Self {
         Self {
             max_memory: Some(2 * 1024 * 1024 * 1024), // 2 GB
-            max_cpu_time: Some(300), // 5 minutes
+            max_cpu_time: Some(300),                  // 5 minutes
             network_enabled: true,
             filesystem_access: FilesystemAccess::ReadOnly,
         }
     }
-    
+
     pub fn validate(&self) -> Result<()> {
         if let Some(mem) = self.max_memory {
             if mem == 0 {
                 return Err(SecurityError::Sandbox(
-                    "Memory limit cannot be zero".to_string()
+                    "Memory limit cannot be zero".to_string(),
                 ));
             }
         }
-        
+
         if let Some(cpu) = self.max_cpu_time {
             if cpu == 0 {
                 return Err(SecurityError::Sandbox(
-                    "CPU time limit cannot be zero".to_string()
+                    "CPU time limit cannot be zero".to_string(),
                 ));
             }
         }
-        
+
         Ok(())
     }
 }
@@ -87,11 +87,11 @@ impl Sandbox {
         config.validate()?;
         Ok(Self { config })
     }
-    
+
     pub fn config(&self) -> &SandboxConfig {
         &self.config
     }
-    
+
     /// Execute a task in the sandbox
     pub async fn execute<F, T>(&self, _task: F) -> Result<T>
     where
@@ -100,29 +100,31 @@ impl Sandbox {
     {
         // TODO: Implement actual sandboxing
         // This would use namespaces, cgroups, seccomp, etc.
-        Err(SecurityError::Sandbox("Sandboxing not yet implemented".to_string()))
+        Err(SecurityError::Sandbox(
+            "Sandboxing not yet implemented".to_string(),
+        ))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_sandbox_config_validation() {
         let mut config = SandboxConfig::strict();
         assert!(config.validate().is_ok());
-        
+
         config.max_memory = Some(0);
         assert!(config.validate().is_err());
     }
-    
+
     #[test]
     fn test_sandbox_presets() {
         let strict = SandboxConfig::strict();
         assert!(!strict.network_enabled);
         assert_eq!(strict.filesystem_access, FilesystemAccess::None);
-        
+
         let relaxed = SandboxConfig::relaxed();
         assert!(relaxed.network_enabled);
         assert_eq!(relaxed.filesystem_access, FilesystemAccess::ReadOnly);

@@ -13,7 +13,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, BorderType, Tabs},
+    widgets::{Block, BorderType, Borders, Tabs},
     Frame, Terminal,
 };
 use std::io;
@@ -26,7 +26,7 @@ mod themes;
 
 pub use app::TuiApp;
 pub use input_mode::InputMode;
-pub use multiplex::{TabBar, Pane};
+pub use multiplex::{Pane, TabBar};
 pub use themes::catppuccin::*;
 
 use components::{StatusBar, TabBarWidget};
@@ -83,9 +83,9 @@ fn render_ui(f: &mut Frame, app: &TuiApp) {
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Tab bar
-            Constraint::Min(0),     // Main content
-            Constraint::Length(3),  // Status bar
+            Constraint::Length(3), // Tab bar
+            Constraint::Min(0),    // Main content
+            Constraint::Length(3), // Status bar
         ])
         .split(size);
 
@@ -96,7 +96,11 @@ fn render_ui(f: &mut Frame, app: &TuiApp) {
     // Top area: [Left] [Middle] [Right]
     let top_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(40), Constraint::Percentage(30), Constraint::Percentage(30)])
+        .constraints([
+            Constraint::Percentage(40),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+        ])
         .split(main_chunks[1]);
 
     // Left panel: [Chat] [Context]
@@ -114,12 +118,12 @@ fn render_ui(f: &mut Frame, app: &TuiApp) {
     // Render components
     app.chat_panel.render(f, left_chunks[0]);
     app.context_panel.render(f, left_chunks[1]);
-    
+
     // Show tool panel if agent mode is enabled
     if app.agent_mode {
         app.tool_panel.render(f, top_chunks[1]);
     }
-    
+
     app.task_panel.render(f, right_chunks[0]);
     app.logs_panel.render(f, right_chunks[1]);
     app.status_bar.render(f, main_chunks[2], app);

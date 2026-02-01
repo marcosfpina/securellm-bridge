@@ -1,9 +1,9 @@
 // LlamaCpp provider implementation for local models
 // Compatible with llama.cpp server API (port 8081)
 
-use securellm_core::*;
 use async_trait::async_trait;
 use reqwest::Client;
+use securellm_core::*;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 

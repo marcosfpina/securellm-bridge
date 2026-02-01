@@ -1,13 +1,13 @@
 // SecureLLM Bridge - Core Library
 // Provides secure abstractions for LLM communication
 
-pub mod error;
-pub mod models;
-pub mod request;
-pub mod response;
 pub mod audit;
+pub mod error;
+pub mod intelligence;
+pub mod models;
 pub mod rate_limit;
-pub mod intelligence; // New module
+pub mod request;
+pub mod response; // New module
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -16,37 +16,37 @@ use std::collections::HashMap;
 pub use error::{Error, Result};
 pub use request::Request;
 pub use response::{
-    Choice, FinishReason, LogProbs, RateLimitInfo, Response, ResponseMetadata, 
-    StreamChunk, StreamDelta, TokenUsage,
+    Choice, FinishReason, LogProbs, RateLimitInfo, Response, ResponseMetadata, StreamChunk,
+    StreamDelta, TokenUsage,
 };
 
 /// Core trait for LLM providers
-/// 
+///
 /// All providers must implement this trait to be used with SecureLLM Bridge.
 /// The trait enforces secure patterns and provides consistent interface.
 #[async_trait]
 pub trait LLMProvider: Send + Sync {
     /// Provider name (e.g., "openai", "anthropic", "deepseek", "ollama")
     fn name(&self) -> &str;
-    
+
     /// Provider version/API version
     fn version(&self) -> &str;
-    
+
     /// Validate configuration before use
     fn validate_config(&self) -> Result<()>;
-    
+
     /// Send a request to the LLM provider
-    /// 
+    ///
     /// This method handles all provider-specific logic while maintaining
     /// security guarantees from the security layer.
     async fn send_request(&self, request: Request) -> Result<Response>;
-    
+
     /// Check if the provider is available/healthy
     async fn health_check(&self) -> Result<ProviderHealth>;
-    
+
     /// Get provider capabilities
     fn capabilities(&self) -> ProviderCapabilities;
-    
+
     /// Get supported models
     async fn list_models(&self) -> Result<Vec<ModelInfo>>;
 }
@@ -130,12 +130,14 @@ impl MessageContent {
     pub fn text(&self) -> String {
         match self {
             MessageContent::Text(t) => t.clone(),
-            MessageContent::Parts(parts) => {
-                parts.iter().map(|p| match p {
+            MessageContent::Parts(parts) => parts
+                .iter()
+                .map(|p| match p {
                     ContentPart::Text { text } => text.as_str(),
                     _ => "",
-                }).collect::<Vec<_>>().join(" ")
-            }
+                })
+                .collect::<Vec<_>>()
+                .join(" "),
         }
     }
 }
@@ -173,11 +175,11 @@ mod tests {
             name: None,
             metadata: None,
         };
-        
+
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("\"role\":\"user\""));
     }
-    
+
     #[test]
     fn test_health_status() {
         let health = ProviderHealth {
@@ -186,7 +188,7 @@ mod tests {
             message: None,
             timestamp: chrono::Utc::now(),
         };
-        
+
         assert_eq!(health.status, HealthStatus::Healthy);
     }
 }

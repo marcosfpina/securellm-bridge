@@ -20,11 +20,11 @@ impl Tool for EchoTool {
     fn name(&self) -> &str {
         "echo"
     }
-    
+
     fn description(&self) -> &str {
         "Echo back the provided message. Useful for testing."
     }
-    
+
     fn parameters_schema(&self) -> serde_json::Value {
         json!({
             "type": "object",
@@ -37,13 +37,13 @@ impl Tool for EchoTool {
             "required": ["message"]
         })
     }
-    
+
     async fn execute(&self, params: ToolParams) -> Result<ToolResult> {
         let message = params.get_str("message")?;
-        
+
         Ok(ToolResult::success(format!("Echo: {}", message)))
     }
-    
+
     fn estimated_latency_ms(&self) -> u64 {
         1 // < 1ms
     }

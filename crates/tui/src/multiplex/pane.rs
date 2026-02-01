@@ -1,8 +1,8 @@
 //! Pane abstraction for multiplex TUI
 
-use uuid::Uuid;
-use ratatui::{Frame, layout::Rect};
 use crate::components::{ChatPanel, ToolExecutionPanel};
+use ratatui::{layout::Rect, Frame};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PaneId(pub Uuid);
@@ -34,7 +34,7 @@ impl ChatPane {
             agent_enabled: false,
         }
     }
-    
+
     pub fn render(&self, f: &mut Frame, area: Rect) {
         self.panel.render(f, area);
     }
@@ -53,7 +53,7 @@ impl ToolPane {
             panel: ToolExecutionPanel::new(),
         }
     }
-    
+
     pub fn render(&self, f: &mut Frame, area: Rect) {
         self.panel.render(f, area);
     }
@@ -66,7 +66,7 @@ impl Pane {
             Pane::Tools(p) => p.id,
         }
     }
-    
+
     pub fn render(&self, f: &mut Frame, area: Rect) {
         match self {
             Pane::Chat(p) => p.render(f, area),

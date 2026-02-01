@@ -50,51 +50,23 @@ impl std::error::Error for ApiError {}
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, error_type, message) = match self {
-            ApiError::ConfigError(msg) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "config_error",
-                msg,
-            ),
-            ApiError::DatabaseError(msg) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "database_error",
-                msg,
-            ),
-            ApiError::ProviderError(msg) => (
-                StatusCode::BAD_GATEWAY,
-                "provider_error",
-                msg,
-            ),
-            ApiError::RateLimitExceeded(msg) => (
-                StatusCode::TOO_MANY_REQUESTS,
-                "rate_limit_exceeded",
-                msg,
-            ),
-            ApiError::BadRequest(msg) => (
-                StatusCode::BAD_REQUEST,
-                "bad_request",
-                msg,
-            ),
-            ApiError::NotFound(msg) => (
-                StatusCode::NOT_FOUND,
-                "not_found",
-                msg,
-            ),
-            ApiError::InternalError(msg) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_error",
-                msg,
-            ),
-            ApiError::CircuitBreakerOpen(msg) => (
-                StatusCode::SERVICE_UNAVAILABLE,
-                "circuit_breaker_open",
-                msg,
-            ),
-            ApiError::Timeout(msg) => (
-                StatusCode::GATEWAY_TIMEOUT,
-                "timeout",
-                msg,
-            ),
+            ApiError::ConfigError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "config_error", msg),
+            ApiError::DatabaseError(msg) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "database_error", msg)
+            }
+            ApiError::ProviderError(msg) => (StatusCode::BAD_GATEWAY, "provider_error", msg),
+            ApiError::RateLimitExceeded(msg) => {
+                (StatusCode::TOO_MANY_REQUESTS, "rate_limit_exceeded", msg)
+            }
+            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "bad_request", msg),
+            ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, "not_found", msg),
+            ApiError::InternalError(msg) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "internal_error", msg)
+            }
+            ApiError::CircuitBreakerOpen(msg) => {
+                (StatusCode::SERVICE_UNAVAILABLE, "circuit_breaker_open", msg)
+            }
+            ApiError::Timeout(msg) => (StatusCode::GATEWAY_TIMEOUT, "timeout", msg),
         };
 
         let body = Json(json!({

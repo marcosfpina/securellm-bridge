@@ -21,16 +21,16 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
     Frame, Terminal,
 };
+use std::fs;
 use std::io;
 use std::process::Command;
-use std::fs;
 
 // Catppuccin Mocha
-const ACCENT: Color = Color::Rgb(137, 180, 250);    // Blue
-const DIM: Color = Color::Rgb(108, 112, 134);       // Overlay0
-const BRIGHT: Color = Color::Rgb(205, 214, 244);    // Text
-const SUCCESS: Color = Color::Rgb(166, 227, 161);   // Green
-const ERROR: Color = Color::Rgb(243, 139, 168);     // Red
+const ACCENT: Color = Color::Rgb(137, 180, 250); // Blue
+const DIM: Color = Color::Rgb(108, 112, 134); // Overlay0
+const BRIGHT: Color = Color::Rgb(205, 214, 244); // Text
+const SUCCESS: Color = Color::Rgb(166, 227, 161); // Green
+const ERROR: Color = Color::Rgb(243, 139, 168); // Red
 
 /// Load context directly from Zellij pane
 fn load_shell_context() -> String {
@@ -38,18 +38,18 @@ fn load_shell_context() -> String {
     let output = Command::new("zellij")
         .args(["action", "dump-screen", "--full"])
         .output();
-        
+
     let screen_content = match output {
         Ok(out) if out.status.success() => String::from_utf8_lossy(&out.stdout).to_string(),
         _ => String::from("[No Zellij context available]"),
     };
-    
+
     // Take last 20 lines to avoid too much context
     let context_lines: Vec<&str> = screen_content.lines().rev().take(20).collect();
     let recent_context: Vec<&str> = context_lines.into_iter().rev().collect();
-    
+
     format!(
-        "Terminal content (last 20 lines):\n---\n{}\n---\nCurrent directory: {}", 
+        "Terminal content (last 20 lines):\n---\n{}\n---\nCurrent directory: {}",
         recent_context.join("\n"),
         std::env::current_dir().unwrap_or_default().display()
     )
@@ -89,7 +89,7 @@ impl AgentOverlay {
         self.output = "Thinking...".to_string();
 
         // Call LLM
-        use securellm_core::{LLMProvider, Request, Message, MessageRole, MessageContent};
+        use securellm_core::{LLMProvider, Message, MessageContent, MessageRole, Request};
         use securellm_providers::llamacpp::LlamaCppProvider;
 
         match LlamaCppProvider::new(8081, "llamacppturbo") {
@@ -142,9 +142,7 @@ impl AgentOverlay {
         }
 
         // Check if Zellij is running
-        let zellij_check = Command::new("zellij")
-            .args(["list-sessions"])
-            .output();
+        let zellij_check = Command::new("zellij").args(["list-sessions"]).output();
 
         match zellij_check {
             Ok(output) if output.status.success() => {
@@ -167,9 +165,7 @@ impl AgentOverlay {
             }
             _ => {
                 // Zellij not available, copy to clipboard as fallback
-                let _ = Command::new("wl-copy")
-                    .arg(&self.output)
-                    .status();
+                let _ = Command::new("wl-copy").arg(&self.output).status();
                 eprintln!("Copied to clipboard: {}", self.output);
             }
         }
@@ -207,17 +203,20 @@ fn render(f: &mut Frame, app: &AgentOverlay) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),  // Prompt
-            Constraint::Length(3),  // Input
-            Constraint::Length(1),  // Separator
-            Constraint::Min(3),     // Output
-            Constraint::Length(1),  // Status
+            Constraint::Length(1), // Prompt
+            Constraint::Length(3), // Input
+            Constraint::Length(1), // Separator
+            Constraint::Min(3),    // Output
+            Constraint::Length(1), // Status
         ])
         .split(inner);
 
     // Prompt line
     let prompt = Paragraph::new(Line::from(vec![
-        Span::styled("❯ ", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "❯ ",
+            Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+        ),
         Span::styled("What do you want to do?", Style::default().fg(DIM)),
     ]));
     f.render_widget(prompt, chunks[0]);
@@ -230,10 +229,7 @@ fn render(f: &mut Frame, app: &AgentOverlay) {
     f.render_widget(input, chunks[1]);
 
     // Cursor
-    f.set_cursor_position((
-        chunks[1].x + app.input.len() as u16,
-        chunks[1].y,
-    ));
+    f.set_cursor_position((chunks[1].x + app.input.len() as u16, chunks[1].y));
 
     // Separator
     let sep_char = match app.status {
@@ -248,8 +244,8 @@ fn render(f: &mut Frame, app: &AgentOverlay) {
         Status::Ready => SUCCESS,
         Status::Error => ERROR,
     };
-    let separator = Paragraph::new(sep_char.repeat(inner.width as usize))
-        .style(Style::default().fg(sep_color));
+    let separator =
+        Paragraph::new(sep_char.repeat(inner.width as usize)).style(Style::default().fg(sep_color));
     f.render_widget(separator, chunks[2]);
 
     // Output
@@ -270,8 +266,7 @@ fn render(f: &mut Frame, app: &AgentOverlay) {
         Status::Ready => "[Enter] Execute  [Esc] Cancel",
         Status::Error => "[Enter] Retry  [Esc] Quit",
     };
-    let status = Paragraph::new(status_text)
-        .style(Style::default().fg(DIM));
+    let status = Paragraph::new(status_text).style(Style::default().fg(DIM));
     f.render_widget(status, chunks[4]);
 }
 

@@ -19,6 +19,10 @@ hound = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 
+# Serialization
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
 # Logging
 tracing = { workspace = true }
 

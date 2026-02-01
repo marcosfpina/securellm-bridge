@@ -21,12 +21,10 @@ struct LogEntry {
 impl LogsPanel {
     pub fn new() -> Self {
         Self {
-            logs: vec![
-                LogEntry {
-                    level: "INFO".to_string(),
-                    message: "TUI initialized".to_string(),
-                },
-            ],
+            logs: vec![LogEntry {
+                level: "INFO".to_string(),
+                message: "TUI initialized".to_string(),
+            }],
         }
     }
 
@@ -60,9 +58,17 @@ impl LogsPanel {
                 };
 
                 let content = Line::from(vec![
-                    Span::styled(icon, level_style.clone().add_modifier(ratatui::style::Modifier::BOLD)),
+                    Span::styled(
+                        icon,
+                        level_style
+                            .clone()
+                            .add_modifier(ratatui::style::Modifier::BOLD),
+                    ),
                     Span::raw(" "),
-                    Span::styled(format!("{}", log.level), level_style.add_modifier(ratatui::style::Modifier::DIM)),
+                    Span::styled(
+                        format!("{}", log.level),
+                        level_style.add_modifier(ratatui::style::Modifier::DIM),
+                    ),
                     Span::raw(" "),
                     Span::styled(&log.message, Style::default().fg(FG_PRIMARY)),
                 ]);
@@ -77,7 +83,12 @@ impl LogsPanel {
                 .border_style(Style::default().fg(BORDER))
                 .title(vec![
                     Span::styled("📜 ", Style::default().fg(WARNING)),
-                    Span::styled("Logs", Style::default().fg(FG_PRIMARY).add_modifier(ratatui::style::Modifier::BOLD)),
+                    Span::styled(
+                        "Logs",
+                        Style::default()
+                            .fg(FG_PRIMARY)
+                            .add_modifier(ratatui::style::Modifier::BOLD),
+                    ),
                 ])
                 .style(Style::default().bg(BG_CARD)),
         );

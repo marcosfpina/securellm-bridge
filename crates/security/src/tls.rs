@@ -1,5 +1,5 @@
 use crate::{Result, SecurityError};
-use rustls::{ClientConfig, ServerConfig, RootCertStore};
+use rustls::{ClientConfig, RootCertStore, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
 use std::fs::File;
 use std::io::BufReader;
@@ -25,7 +25,7 @@ impl TlsConfigBuilder {
             verify_client: false,
         }
     }
-    
+
     /// Add system root certificates
     pub fn with_system_roots(mut self) -> Result<Self> {
         // Add native root certificates
@@ -42,29 +42,26 @@ impl TlsConfigBuilder {
         self.root_certs = roots;
         Ok(self)
     }
-    
+
     /// Add custom CA certificate
     pub fn with_ca_cert(mut self, ca_path: impl AsRef<Path>) -> Result<Self> {
-        let file = File::open(ca_path.as_ref()).map_err(|e| {
-            SecurityError::Certificate(format!("Failed to open CA cert: {}", e))
-        })?;
+        let file = File::open(ca_path.as_ref())
+            .map_err(|e| SecurityError::Certificate(format!("Failed to open CA cert: {}", e)))?;
         let mut reader = BufReader::new(file);
-        
+
         let certs = certs(&mut reader)
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| {
-                SecurityError::Certificate(format!("Failed to parse CA cert: {}", e))
-            })?;
-        
+            .map_err(|e| SecurityError::Certificate(format!("Failed to parse CA cert: {}", e)))?;
+
         for cert in certs {
-            self.root_certs.add(cert).map_err(|e| {
-                SecurityError::Certificate(format!("Failed to add CA cert: {}", e))
-            })?;
+            self.root_certs
+                .add(cert)
+                .map_err(|e| SecurityError::Certificate(format!("Failed to add CA cert: {}", e)))?;
         }
-        
+
         Ok(self)
     }
-    
+
     /// Configure client certificate for mutual TLS
     pub fn with_client_cert(
         mut self,
@@ -81,51 +78,55 @@ impl TlsConfigBuilder {
             .map_err(|e| {
                 SecurityError::Certificate(format!("Failed to parse client cert: {}", e))
             })?;
-        
+
         // Load private key
-        let key_file = File::open(key_path.as_ref()).map_err(|e| {
-            SecurityError::Certificate(format!("Failed to open client key: {}", e))
-        })?;
+        let key_file = File::open(key_path.as_ref())
+            .map_err(|e| SecurityError::Certificate(format!("Failed to open client key: {}", e)))?;
         let mut key_reader = BufReader::new(key_file);
         let keys = pkcs8_private_keys(&mut key_reader)
             .collect::<std::result::Result<Vec<_>, _>>()
             .map_err(|e| {
                 SecurityError::Certificate(format!("Failed to parse private key: {}", e))
             })?;
-        
-        let key = keys.into_iter().next().ok_or_else(|| {
-            SecurityError::Certificate("No private key found".to_string())
-        })?;
-        
+
+        let key = keys
+            .into_iter()
+            .next()
+            .ok_or_else(|| SecurityError::Certificate("No private key found".to_string()))?;
+
         self.client_cert_chain = Some(cert_chain);
         self.client_key = Some(rustls::pki_types::PrivateKeyDer::Pkcs8(key));
-        
+
         Ok(self)
     }
-    
+
     /// Disable server certificate verification (NOT RECOMMENDED for production)
     pub fn disable_server_verification(mut self) -> Self {
         self.verify_server = false;
         self
     }
-    
+
     /// Enable client certificate verification (for server configs)
     pub fn require_client_cert(mut self) -> Self {
         self.verify_client = true;
         self
     }
-    
+
     /// Build client configuration
     pub fn build_client_config(self) -> Result<Arc<ClientConfig>> {
         let config = if self.verify_server {
             // Normal path with server verification
-            let builder = ClientConfig::builder()
-                .with_root_certificates(self.root_certs);
-            
+            let builder = ClientConfig::builder().with_root_certificates(self.root_certs);
+
             if let (Some(cert_chain), Some(key)) = (self.client_cert_chain, self.client_key) {
-                builder.with_client_auth_cert(cert_chain, key).map_err(|e| {
-                    SecurityError::Certificate(format!("Failed to configure client auth: {}", e))
-                })?
+                builder
+                    .with_client_auth_cert(cert_chain, key)
+                    .map_err(|e| {
+                        SecurityError::Certificate(format!(
+                            "Failed to configure client auth: {}",
+                            e
+                        ))
+                    })?
             } else {
                 builder.with_no_client_auth()
             }
@@ -134,19 +135,24 @@ impl TlsConfigBuilder {
             let builder = ClientConfig::builder()
                 .dangerous()
                 .with_custom_certificate_verifier(Arc::new(NoVerifier));
-            
+
             if let (Some(cert_chain), Some(key)) = (self.client_cert_chain, self.client_key) {
-                builder.with_client_auth_cert(cert_chain, key).map_err(|e| {
-                    SecurityError::Certificate(format!("Failed to configure client auth: {}", e))
-                })?
+                builder
+                    .with_client_auth_cert(cert_chain, key)
+                    .map_err(|e| {
+                        SecurityError::Certificate(format!(
+                            "Failed to configure client auth: {}",
+                            e
+                        ))
+                    })?
             } else {
                 builder.with_no_client_auth()
             }
         };
-        
+
         Ok(Arc::new(config))
     }
-    
+
     /// Build server configuration
     pub fn build_server_config(
         self,
@@ -163,38 +169,44 @@ impl TlsConfigBuilder {
             .map_err(|e| {
                 SecurityError::Certificate(format!("Failed to parse server cert: {}", e))
             })?;
-        
+
         // Load server key
-        let key_file = File::open(key_path.as_ref()).map_err(|e| {
-            SecurityError::Certificate(format!("Failed to open server key: {}", e))
-        })?;
+        let key_file = File::open(key_path.as_ref())
+            .map_err(|e| SecurityError::Certificate(format!("Failed to open server key: {}", e)))?;
         let mut key_reader = BufReader::new(key_file);
         let keys = pkcs8_private_keys(&mut key_reader)
             .collect::<std::result::Result<Vec<_>, _>>()
             .map_err(|e| {
                 SecurityError::Certificate(format!("Failed to parse server key: {}", e))
             })?;
-        
-        let key = keys.into_iter().next().ok_or_else(|| {
-            SecurityError::Certificate("No private key found".to_string())
-        })?;
-        
+
+        let key = keys
+            .into_iter()
+            .next()
+            .ok_or_else(|| SecurityError::Certificate("No private key found".to_string()))?;
+
         let config = if self.verify_client {
             let verifier = rustls::server::WebPkiClientVerifier::builder(Arc::new(self.root_certs))
                 .build()
-                .map_err(|e| SecurityError::Certificate(format!("Failed to build verifier: {}", e)))?;
-            
+                .map_err(|e| {
+                    SecurityError::Certificate(format!("Failed to build verifier: {}", e))
+                })?;
+
             ServerConfig::builder()
                 .with_client_cert_verifier(verifier)
                 .with_single_cert(cert_chain, rustls::pki_types::PrivateKeyDer::Pkcs8(key))
-                .map_err(|e| SecurityError::Certificate(format!("Failed to configure server: {}", e)))?
+                .map_err(|e| {
+                    SecurityError::Certificate(format!("Failed to configure server: {}", e))
+                })?
         } else {
             ServerConfig::builder()
                 .with_no_client_auth()
                 .with_single_cert(cert_chain, rustls::pki_types::PrivateKeyDer::Pkcs8(key))
-                .map_err(|e| SecurityError::Certificate(format!("Failed to configure server: {}", e)))?
+                .map_err(|e| {
+                    SecurityError::Certificate(format!("Failed to configure server: {}", e))
+                })?
         };
-        
+
         Ok(Arc::new(config))
     }
 }
@@ -221,7 +233,7 @@ impl rustls::client::danger::ServerCertVerifier for NoVerifier {
         tracing::warn!("Server certificate verification disabled - INSECURE!");
         Ok(rustls::client::danger::ServerCertVerified::assertion())
     }
-    
+
     fn verify_tls12_signature(
         &self,
         _message: &[u8],
@@ -230,7 +242,7 @@ impl rustls::client::danger::ServerCertVerifier for NoVerifier {
     ) -> std::result::Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
         Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
     }
-    
+
     fn verify_tls13_signature(
         &self,
         _message: &[u8],
@@ -239,7 +251,7 @@ impl rustls::client::danger::ServerCertVerifier for NoVerifier {
     ) -> std::result::Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
         Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
     }
-    
+
     fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
         vec![
             rustls::SignatureScheme::RSA_PKCS1_SHA256,
@@ -252,14 +264,14 @@ impl rustls::client::danger::ServerCertVerifier for NoVerifier {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_tls_config_builder() {
         let builder = TlsConfigBuilder::new();
         assert!(!builder.verify_client);
         assert!(builder.verify_server);
     }
-    
+
     #[test]
     fn test_disable_verification() {
         let builder = TlsConfigBuilder::new().disable_server_verification();

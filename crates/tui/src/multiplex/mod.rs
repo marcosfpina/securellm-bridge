@@ -1,9 +1,9 @@
 // ! Multiplex system for Zellij-style TUI
 
-mod pane;
 mod layout;
+mod pane;
 mod tabs;
 
-pub use pane::{Pane, PaneId, ChatPane, ToolPane};
 pub use layout::Layout;
+pub use pane::{ChatPane, Pane, PaneId, ToolPane};
 pub use tabs::{Tab, TabBar};

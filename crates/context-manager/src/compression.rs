@@ -9,7 +9,9 @@ pub struct Compressor {
 
 impl Compressor {
     pub fn new(level: i32) -> Self {
-        Self { level: level.clamp(1, 22) }
+        Self {
+            level: level.clamp(1, 22),
+        }
     }
 
     pub fn compress(&self, data: &[u8]) -> Result<Vec<u8>> {
@@ -34,10 +36,10 @@ mod tests {
     fn test_compress_decompress() {
         let compressor = Compressor::new(10);
         let data = b"Hello, world! This is a test.";
-        
+
         let compressed = compressor.compress(data).unwrap();
         let decompressed = compressor.decompress(&compressed).unwrap();
-        
+
         assert_eq!(data, decompressed.as_slice());
     }
 }

@@ -2,7 +2,7 @@ use anyhow::Result;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::Select;
-use securellm_core::{Message, MessageContent, MessageRole, Request, LLMProvider};
+use securellm_core::{LLMProvider, Message, MessageContent, MessageRole, Request};
 use securellm_providers::deepseek::{DeepSeekConfig, DeepSeekProvider};
 use std::io::{self, Write};
 
@@ -29,7 +29,10 @@ pub async fn run_repl(
 
     // Initialize provider (Simplified for now - strictly DeepSeek supported in this demo)
     if provider_name != "deepseek" {
-        println!("{}", "Currently only 'deepseek' is fully supported in REPL.".yellow());
+        println!(
+            "{}",
+            "Currently only 'deepseek' is fully supported in REPL.".yellow()
+        );
         // Simple confirmation without inquire specific Confirm to reduce dependencies if needed
         println!("Press Enter to continue or Ctrl+C to abort...");
         let mut dummy = String::new();
@@ -44,7 +47,11 @@ pub async fn run_repl(
         None => "deepseek-chat".to_string(), // Default
     };
 
-    println!("🔌 Connected to {} ({})", provider_name.cyan(), model.yellow());
+    println!(
+        "🔌 Connected to {} ({})",
+        provider_name.cyan(),
+        model.yellow()
+    );
     println!("{}", "Type 'exit' or 'quit' to end session.".dimmed());
     println!();
 
@@ -91,7 +98,7 @@ pub async fn run_repl(
         pb.set_style(
             ProgressStyle::default_spinner()
                 .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏ ")
-                .template("{spinner:.blue} {msg}")?
+                .template("{spinner:.blue} {msg}")?,
         );
         pb.set_message("Thinking...");
         pb.enable_steady_tick(std::time::Duration::from_millis(100));
@@ -116,8 +123,10 @@ pub async fn run_repl(
 
         match response_result {
             Ok(response) => {
-                let content = response.text().unwrap_or_else(|e| format!("Error getting text: {}", e));
-                
+                let content = response
+                    .text()
+                    .unwrap_or_else(|e| format!("Error getting text: {}", e));
+
                 // Render Text
                 println!("{}", "Assistant ➤".blue().bold());
                 println!("{}", content); // Raw text output for now
@@ -154,13 +163,17 @@ pub async fn run_repl(
 }
 
 fn print_banner() {
-    println!("{}", r#"
+    println!(
+        "{}",
+        r#"
    _____                            __    __    __  __ 
   / ___/___  _______  __________   / /   / /   /  |/  |
   \__ \/ _ \/ ___/ / / / ___/ _ \ / /   / /   / /|_/ / 
  ___/ /  __/ /__/ /_/ / /  /  __// /___/ /___/ /  / /  
 /____/\___/\___/\__,_/_/   \___//_____/_____/_/  /_/   
-    "#.cyan());
+    "#
+        .cyan()
+    );
     println!("Secure Bridge v{}", env!("CARGO_PKG_VERSION"));
     println!();
 }

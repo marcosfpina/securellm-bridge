@@ -45,8 +45,18 @@ impl ChatPanel {
             .iter()
             .map(|msg| {
                 let (role_icon, role_style) = match msg.role.as_str() {
-                    "user" => ("▶", Style::default().fg(GRADIENT_BLUE).add_modifier(Modifier::BOLD)),
-                    "assistant" => ("◆", Style::default().fg(GRADIENT_PURPLE).add_modifier(Modifier::BOLD)),
+                    "user" => (
+                        "▶",
+                        Style::default()
+                            .fg(GRADIENT_BLUE)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    "assistant" => (
+                        "◆",
+                        Style::default()
+                            .fg(GRADIENT_PURPLE)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     "system" => ("●", Style::default().fg(WARNING)),
                     _ => ("○", Style::default().fg(FG_MUTED)),
                 };
@@ -54,7 +64,10 @@ impl ChatPanel {
                 let content = Line::from(vec![
                     Span::styled(role_icon, role_style.clone()),
                     Span::raw(" "),
-                    Span::styled(format!("{} ", msg.role), role_style.add_modifier(Modifier::DIM)),
+                    Span::styled(
+                        format!("{} ", msg.role),
+                        role_style.add_modifier(Modifier::DIM),
+                    ),
                     Span::styled(&msg.content, Style::default().fg(FG_PRIMARY)),
                 ]);
 
@@ -68,7 +81,10 @@ impl ChatPanel {
                 .border_style(Style::default().fg(BORDER))
                 .title(vec![
                     Span::styled("💬 ", Style::default().fg(PRIMARY)),
-                    Span::styled("Chat", Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "Chat",
+                        Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD),
+                    ),
                 ])
                 .style(Style::default().bg(BG_CARD)),
         );

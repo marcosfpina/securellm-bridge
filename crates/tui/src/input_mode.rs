@@ -4,13 +4,13 @@
 pub enum InputMode {
     /// Normal mode - vim-like navigation
     Normal,
-    
+
     /// Insert mode - typing in chat
     Insert,
-    
+
     /// Command mode - executing commands
     Command,
-    
+
     /// Voice mode - recording audio
     Voice,
 }

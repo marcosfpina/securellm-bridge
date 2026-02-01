@@ -1,9 +1,9 @@
 //! Task executor - spawns async tasks
 
 use anyhow::Result;
-use tokio::task::JoinHandle;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 pub struct TaskExecutor {

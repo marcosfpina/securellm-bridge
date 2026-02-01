@@ -66,9 +66,8 @@ async fn get_projects(
 
     // Filter by status
     if let Some(status_filter) = params.status {
-        projects.retain(|p| {
-            format!("{:?}", p.status).to_lowercase() == status_filter.to_lowercase()
-        });
+        projects
+            .retain(|p| format!("{:?}", p.status).to_lowercase() == status_filter.to_lowercase());
     }
 
     // Filter by language
@@ -107,10 +106,7 @@ async fn get_projects(
 }
 
 // GET /api/projects/:name
-async fn get_project(
-    State(state): State<AppState>,
-    Path(name): Path<String>,
-) -> impl IntoResponse {
+async fn get_project(State(state): State<AppState>, Path(name): Path<String>) -> impl IntoResponse {
     if let Some(project) = state.get_project(&name).await {
         Ok(Json(project))
     } else {

@@ -1,13 +1,13 @@
 //! Tab bar component for multiplex UI
 
+use crate::themes::catppuccin::*;
 use ratatui::{
-    Frame,
     layout::Rect,
     style::{Modifier, Style},
     text::Span,
-    widgets::{Block, Borders, BorderType, Tabs},
+    widgets::{Block, BorderType, Borders, Tabs},
+    Frame,
 };
-use crate::themes::catppuccin::*;
 
 pub struct TabBarWidget;
 
@@ -31,9 +31,7 @@ impl TabBarWidget {
                     // Inactive tab - muted
                     Span::styled(
                         format!(" {} ", title),
-                        Style::default()
-                            .fg(FG_MUTED)
-                            .bg(BG_SURFACE),
+                        Style::default().fg(FG_MUTED).bg(BG_SURFACE),
                     )
                 }
             })

@@ -5,16 +5,14 @@ use tracing::debug;
 use crate::state::AppState;
 
 /// GET /api/metrics - Prometheus metrics endpoint
-/// 
+///
 /// Returns metrics in Prometheus format for scraping
-pub async fn metrics(
-    State(_state): State<Arc<AppState>>,
-) -> impl IntoResponse {
+pub async fn metrics(State(_state): State<Arc<AppState>>) -> impl IntoResponse {
     debug!("Metrics requested");
 
     // TODO: Implement actual Prometheus metrics collection
     // For now, return basic placeholder metrics
-    
+
     let metrics_text = format!(
         r#"# HELP securellm_requests_total Total number of requests
 # TYPE securellm_requests_total counter

@@ -1,10 +1,10 @@
+use securellm_api_server::config::{CircuitBreakerConfig, Config, ProviderConfig};
+use securellm_api_server::state::AppState;
+use securellm_core::intelligence::RoutingStrategy;
+use securellm_core::request::Request;
+use std::sync::Arc;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
-use securellm_api_server::config::{Config, ProviderConfig, CircuitBreakerConfig};
-use securellm_api_server::state::AppState;
-use securellm_core::request::Request;
-use securellm_core::intelligence::RoutingStrategy;
-use std::sync::Arc;
 
 #[tokio::test]
 async fn test_smart_routing_fallback() {
@@ -41,7 +41,7 @@ async fn test_smart_routing_fallback() {
 
     // 4. Setup Config pointing to Mocks
     let mut config = Config::default();
-    
+
     // Disable others
     config.providers.openai = None;
     config.providers.anthropic = None;
@@ -50,7 +50,7 @@ async fn test_smart_routing_fallback() {
 
     // Use in-memory DB for tests
     config.database.url = "sqlite::memory:".to_string();
-    
+
     // Use Mock Redis (if available) or skip redis dependency if possible
     // Note: Since we don't have a mock redis, we assume the environment has one or we should mock the pool.
     // For this environment, let's assume we need to skip redis or point to a local one.
@@ -67,7 +67,11 @@ async fn test_smart_routing_fallback() {
         timeout_secs: 1,
         max_retries: 0,
         rate_limit_per_minute: 100,
-        circuit_breaker: CircuitBreakerConfig { failure_threshold: 1, success_threshold: 1, timeout_secs: 10 },
+        circuit_breaker: CircuitBreakerConfig {
+            failure_threshold: 1,
+            success_threshold: 1,
+            timeout_secs: 10,
+        },
     });
 
     // Configure Gemini (Secondary - Healthy)
@@ -78,7 +82,11 @@ async fn test_smart_routing_fallback() {
         timeout_secs: 1,
         max_retries: 0,
         rate_limit_per_minute: 100,
-        circuit_breaker: CircuitBreakerConfig { failure_threshold: 1, success_threshold: 1, timeout_secs: 10 },
+        circuit_breaker: CircuitBreakerConfig {
+            failure_threshold: 1,
+            success_threshold: 1,
+            timeout_secs: 10,
+        },
     });
 
     // 5. Initialize AppState
@@ -91,8 +99,13 @@ async fn test_smart_routing_fallback() {
         ("gemini".to_string(), "gemini-2.0-flash".to_string()),
     ];
 
-    let ranked = state.routing_engine.select_candidates(candidates, RoutingStrategy::LowestCost);
-    assert_eq!(ranked[0].0, "gemini", "Gemini Flash should be first (cheapest in 2026)");
+    let ranked = state
+        .routing_engine
+        .select_candidates(candidates, RoutingStrategy::LowestCost);
+    assert_eq!(
+        ranked[0].0, "gemini",
+        "Gemini Flash should be first (cheapest in 2026)"
+    );
 
     // Manual Loop Simulation (Integration Test)
     let mut success = false;
@@ -100,12 +113,12 @@ async fn test_smart_routing_fallback() {
 
     for (p_name, m_name) in ranked {
         let provider = state.provider_manager.get_provider(&p_name).await.unwrap();
-        
-use securellm_core::Message;
-use securellm_core::MessageRole;
-use securellm_core::MessageContent;
 
-// ...
+        use securellm_core::Message;
+        use securellm_core::MessageContent;
+        use securellm_core::MessageRole;
+
+        // ...
 
         // Mock Core Request
         let mut req = Request::new(p_name.clone(), m_name);
@@ -115,7 +128,7 @@ use securellm_core::MessageContent;
             name: None,
             metadata: None,
         });
-        
+
         match provider.send_request(req).await {
             Ok(resp) => {
                 success = true;
@@ -131,5 +144,8 @@ use securellm_core::MessageContent;
     }
 
     assert!(success, "Request should eventually succeed");
-    assert_eq!(last_response, "Fallback successful!", "Should receive response from Gemini");
+    assert_eq!(
+        last_response, "Fallback successful!",
+        "Should receive response from Gemini"
+    );
 }

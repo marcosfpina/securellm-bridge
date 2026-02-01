@@ -111,6 +111,15 @@ info:
 health:
     poetry run cerebro ops health
 
+# ----------------------------------------------------------------------------
+# SECURITY
+# ----------------------------------------------------------------------------
+
+# Run any command with decrypted secrets (Usage: just secure <cmd>)
+# Expects 'secrets.yaml' in the project root or configured via SOPS_FILE env
+secure cmd:
+    sops exec-env ${SOPS_FILE:-secrets.yaml} -- {{cmd}}
+
 # Run code analysis on a repository
 analyze path context="General Review":
     poetry run cerebro knowledge analyze {{path}} "{{context}}"

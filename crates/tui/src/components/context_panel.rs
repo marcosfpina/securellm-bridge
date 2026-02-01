@@ -40,17 +40,21 @@ impl ContextPanel {
                 Span::styled("Tokens: ", Style::default().fg(FG_MUTED)),
                 Span::styled(
                     format!("{}", self.total_tokens),
-                    Style::default().fg(GRADIENT_BLUE).add_modifier(ratatui::style::Modifier::BOLD),
+                    Style::default()
+                        .fg(GRADIENT_BLUE)
+                        .add_modifier(ratatui::style::Modifier::BOLD),
                 ),
             ]),
             Line::from(""),
             Line::from(vec![
                 Span::styled("◆ ", Style::default().fg(SUCCESS)),
                 Span::styled("Compression", Style::default().fg(FG_MUTED)),
-Span::raw(": "),
+                Span::raw(": "),
                 Span::styled(
                     format!("{:.1}x", self.compression_ratio),
-                    Style::default().fg(GRADIENT_EMERALD).add_modifier(ratatui::style::Modifier::BOLD),
+                    Style::default()
+                        .fg(GRADIENT_EMERALD)
+                        .add_modifier(ratatui::style::Modifier::BOLD),
                 ),
             ]),
             Line::from(""),
@@ -59,7 +63,9 @@ Span::raw(": "),
                 Span::styled("Cache Hits: ", Style::default().fg(FG_MUTED)),
                 Span::styled(
                     format!("{}", self.cache_hits),
-                    Style::default().fg(GRADIENT_ORANGE).add_modifier(ratatui::style::Modifier::BOLD),
+                    Style::default()
+                        .fg(GRADIENT_ORANGE)
+                        .add_modifier(ratatui::style::Modifier::BOLD),
                 ),
             ]),
         ];
@@ -70,7 +76,12 @@ Span::raw(": "),
                 .border_style(Style::default().fg(BORDER))
                 .title(vec![
                     Span::styled("📊 ", Style::default().fg(PRIMARY)),
-                    Span::styled("Context", Style::default().fg(FG_PRIMARY).add_modifier(ratatui::style::Modifier::BOLD)),
+                    Span::styled(
+                        "Context",
+                        Style::default()
+                            .fg(FG_PRIMARY)
+                            .add_modifier(ratatui::style::Modifier::BOLD),
+                    ),
                 ])
                 .style(Style::default().bg(BG_CARD)),
         );

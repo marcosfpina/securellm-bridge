@@ -33,26 +33,25 @@ pub struct ComponentHealth {
 }
 
 /// GET /api/health - Comprehensive health check
-/// 
+///
 /// Returns detailed health information about all components
-pub async fn health_check(
-    State(state): State<Arc<AppState>>,
-) -> ApiResult<Json<HealthResponse>> {
+pub async fn health_check(State(state): State<Arc<AppState>>) -> ApiResult<Json<HealthResponse>> {
     debug!("Health check requested");
 
     // Check database health
     let db_health = check_database_health(&state).await;
-    
+
     // Check Redis health
     let redis_health = check_redis_health(&state).await;
-    
+
     // Check all providers
     let provider_healths = check_providers_health(&state).await;
 
     // Determine overall status
-    let overall_status = if db_health.status == "healthy" 
+    let overall_status = if db_health.status == "healthy"
         && redis_health.status == "healthy"
-        && provider_healths.iter().any(|p| p.status == "healthy") {
+        && provider_healths.iter().any(|p| p.status == "healthy")
+    {
         "healthy"
     } else if provider_healths.iter().all(|p| p.status == "unhealthy") {
         "unhealthy"
@@ -74,16 +73,14 @@ pub async fn health_check(
 }
 
 /// GET /api/ready - Readiness probe for Kubernetes
-/// 
+///
 /// Returns 200 if ready, 503 if not ready
-pub async fn readiness_check(
-    State(state): State<Arc<AppState>>,
-) -> ApiResult<StatusCode> {
+pub async fn readiness_check(State(state): State<Arc<AppState>>) -> ApiResult<StatusCode> {
     debug!("Readiness check requested");
 
     // Check critical components
     let db_health = check_database_health(&state).await;
-    
+
     if db_health.status != "healthy" {
         return Ok(StatusCode::SERVICE_UNAVAILABLE);
     }
@@ -102,7 +99,7 @@ pub async fn readiness_check(
 /// Check database health
 async fn check_database_health(state: &AppState) -> ComponentHealth {
     let start = std::time::Instant::now();
-    
+
     match sqlx::query("SELECT 1").execute(&state.db_pool).await {
         Ok(_) => ComponentHealth {
             status: "healthy".to_string(),
@@ -125,23 +122,21 @@ async fn check_redis_health(state: &AppState) -> ComponentHealth {
     let start = std::time::Instant::now();
 
     match state.redis_pool.get().await {
-        Ok(mut conn) => {
-            match redis::cmd("PING").query_async::<String>(&mut *conn).await {
-                Ok(_) => ComponentHealth {
-                    status: "healthy".to_string(),
+        Ok(mut conn) => match redis::cmd("PING").query_async::<String>(&mut *conn).await {
+            Ok(_) => ComponentHealth {
+                status: "healthy".to_string(),
+                latency_ms: Some(start.elapsed().as_millis() as u64),
+                error: None,
+            },
+            Err(e) => {
+                error!("Redis ping failed: {}", e);
+                ComponentHealth {
+                    status: "unhealthy".to_string(),
                     latency_ms: Some(start.elapsed().as_millis() as u64),
-                    error: None,
-                },
-                Err(e) => {
-                    error!("Redis ping failed: {}", e);
-                    ComponentHealth {
-                        status: "unhealthy".to_string(),
-                        latency_ms: Some(start.elapsed().as_millis() as u64),
-                        error: Some(e.to_string()),
-                    }
+                    error: Some(e.to_string()),
                 }
             }
-        }
+        },
         Err(e) => {
             error!("Redis connection failed: {}", e);
             ComponentHealth {
@@ -156,9 +151,9 @@ async fn check_redis_health(state: &AppState) -> ComponentHealth {
 /// Check health of all providers
 async fn check_providers_health(state: &AppState) -> Vec<ProviderHealth> {
     let provider_names = state.provider_manager.list_providers().await;
-    
+
     let mut healths = Vec::new();
-    
+
     for name in provider_names {
         // TODO: Implement actual provider health checks
         healths.push(ProviderHealth {
@@ -169,7 +164,7 @@ async fn check_providers_health(state: &AppState) -> Vec<ProviderHealth> {
             last_error: None,
         });
     }
-    
+
     // If no providers, add placeholder
     if healths.is_empty() {
         healths.push(ProviderHealth {
@@ -180,6 +175,6 @@ async fn check_providers_health(state: &AppState) -> Vec<ProviderHealth> {
             last_error: Some("No providers configured".to_string()),
         });
     }
-    
+
     healths
 }

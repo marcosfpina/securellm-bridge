@@ -20,10 +20,10 @@ impl StatusBar {
         use crate::themes::catppuccin::*;
 
         let mode_color = match app.input_mode {
-            crate::InputMode::Normal => SECONDARY,      // Blue
-            crate::InputMode::Insert => SUCCESS,         // Green
-            crate::InputMode::Command => WARNING,        // Orange
-            crate::InputMode::Voice => GRADIENT_PINK,    // Pink
+            crate::InputMode::Normal => SECONDARY,    // Blue
+            crate::InputMode::Insert => SUCCESS,      // Green
+            crate::InputMode::Command => WARNING,     // Orange
+            crate::InputMode::Voice => GRADIENT_PINK, // Pink
         };
 
         let content = vec![
@@ -38,19 +38,34 @@ impl StatusBar {
                 Span::raw("  "),
                 Span::styled("◆ ", Style::default().fg(PRIMARY)),
                 Span::styled("Provider: ", Style::default().fg(FG_MUTED)),
-                Span::styled("LlamaCpp", Style::default().fg(GRADIENT_PURPLE).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "LlamaCpp",
+                    Style::default()
+                        .fg(GRADIENT_PURPLE)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::raw("  "),
                 Span::styled("│", Style::default().fg(BORDER)),
                 Span::raw("  "),
                 Span::styled("◆ ", Style::default().fg(SECONDARY)),
                 Span::styled("Model: ", Style::default().fg(FG_MUTED)),
-                Span::styled("llamacppturbo:8081", Style::default().fg(GRADIENT_BLUE).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "llamacppturbo:8081",
+                    Style::default()
+                        .fg(GRADIENT_BLUE)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::raw("  "),
                 Span::styled("│", Style::default().fg(BORDER)),
                 Span::raw("  "),
                 Span::styled("◆ ", Style::default().fg(SUCCESS)),
                 Span::styled("Tokens: ", Style::default().fg(FG_MUTED)),
-                Span::styled("1.2K", Style::default().fg(GRADIENT_EMERALD).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "1.2K",
+                    Style::default()
+                        .fg(GRADIENT_EMERALD)
+                        .add_modifier(Modifier::BOLD),
+                ),
             ]),
             Line::from(vec![
                 Span::raw(" "),
@@ -60,7 +75,7 @@ impl StatusBar {
                 } else {
                     Span::styled(
                         "Press 'i' to insert • 'v' for voice • ':' for commands • 'q' to quit",
-                        Style::default().fg(FG_MUTED).add_modifier(Modifier::ITALIC)
+                        Style::default().fg(FG_MUTED).add_modifier(Modifier::ITALIC),
                     )
                 },
             ]),

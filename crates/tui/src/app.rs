@@ -1,16 +1,16 @@
 //! TUI Application state
 
 use anyhow::Result;
+use securellm_agents::{tools::EchoTool, AgentExecutor, ToolRegistry};
 use securellm_context_manager::ContextManager;
+use securellm_providers::llamacpp::LlamaCppProvider;
 use securellm_task_manager::TaskManager;
 use securellm_voice_agents::VoiceAgent;
-use securellm_agents::{AgentExecutor, ToolRegistry, tools::EchoTool};
-use securellm_providers::llamacpp::LlamaCppProvider;
 use std::sync::Arc;
 
 use crate::components::*;
-use crate::InputMode;
 use crate::multiplex::TabBar;
+use crate::InputMode;
 
 pub struct TuiApp {
     pub input_mode: InputMode,
@@ -22,14 +22,14 @@ pub struct TuiApp {
     pub tool_panel: ToolExecutionPanel,
     pub status_bar: StatusBar,
     pub focused_panel: FocusedPanel,
-    
+
     // Multiplex system
     pub tab_bar: TabBar,
-    
+
     // Agent system
     pub agent_mode: bool,
     agent_executor: Option<AgentExecutor>,
-    
+
     // Backend services
     task_manager: TaskManager,
     context_manager: ContextManager,
@@ -50,11 +50,11 @@ impl TuiApp {
         let task_manager = TaskManager::new();
         let context_manager = ContextManager::new()?;
         let voice_agent = VoiceAgent::new().ok(); // Optional
-        
+
         // Initialize agent system
         let mut registry = ToolRegistry::new();
         registry.register(EchoTool::new());
-        
+
         let provider = LlamaCppProvider::new(8081, "llamacppturbo").ok();
         let agent_executor = provider.map(|p| AgentExecutor::new(registry, Arc::new(p)));
 
@@ -89,10 +89,12 @@ impl TuiApp {
             let message = self.input_buffer.clone();
             self.chat_panel.add_message("user", &message);
             self.input_buffer.clear();
-            
+
             // Send to LlamaCpp provider
+            use securellm_core::{
+                LLMProvider, Message as LLMMessage, MessageContent, MessageRole, Request,
+            };
             use securellm_providers::llamacpp::LlamaCppProvider;
-            use securellm_core::{LLMProvider, Request, Message as LLMMessage, MessageRole, MessageContent};
 
             match LlamaCppProvider::new(8081, "llamacppturbo") {
                 Ok(provider) => {
@@ -119,12 +121,14 @@ impl TuiApp {
                             }
                         }
                         Err(e) => {
-                            self.chat_panel.add_message("system", &format!("Error: {}", e));
+                            self.chat_panel
+                                .add_message("system", &format!("Error: {}", e));
                         }
                     }
                 }
                 Err(e) => {
-                    self.chat_panel.add_message("system", &format!("Provider error: {}", e));
+                    self.chat_panel
+                        .add_message("system", &format!("Provider error: {}", e));
                 }
             }
         }
@@ -153,12 +157,13 @@ impl TuiApp {
             FocusedPanel::Logs => FocusedPanel::Chat,
         };
     }
-    
+
     /// Toggle agent mode
     pub fn toggle_agent_mode(&mut self) {
         self.agent_mode = !self.agent_mode;
         if self.agent_mode {
-            self.chat_panel.add_message("system", "🤖 Agent mode enabled");
+            self.chat_panel
+                .add_message("system", "🤖 Agent mode enabled");
         } else {
             self.chat_panel.add_message("system", "Agent mode disabled");
         }

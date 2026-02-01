@@ -8,9 +8,9 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use securellm_core::rate_limit::{RateLimitError, RateLimiter};
 use serde_json::json;
 use std::sync::Arc;
-use securellm_core::rate_limit::{RateLimiter, RateLimitError};
 use tracing::{debug, warn};
 
 /// Rate limiting middleware
@@ -86,8 +86,8 @@ fn extract_provider(req: &Request<Body>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::http::Request;
     use axum::body::Body;
+    use axum::http::Request;
 
     #[test]
     fn test_extract_provider_from_header() {

@@ -158,7 +158,12 @@ impl ProjectAnalyzer {
         let mut score: f64 = 15.0; // Start optimistic
 
         // Check for lock files (good sign)
-        let lock_files = ["Cargo.lock", "package-lock.json", "yarn.lock", "poetry.lock"];
+        let lock_files = [
+            "Cargo.lock",
+            "package-lock.json",
+            "yarn.lock",
+            "poetry.lock",
+        ];
         let has_lock = lock_files.iter().any(|file| path.join(file).exists());
         if !has_lock {
             score -= 5.0;
@@ -190,7 +195,8 @@ impl ProjectAnalyzer {
             recommendations.push("Consider improving documentation and test coverage".to_string());
         } else {
             insights.push("Project requires significant attention".to_string());
-            recommendations.push("Prioritize documentation, testing, and recent commits".to_string());
+            recommendations
+                .push("Prioritize documentation, testing, and recent commits".to_string());
         }
 
         // Status-based insights
@@ -199,7 +205,8 @@ impl ProjectAnalyzer {
                 insights.push("Active development with recent commits".to_string());
             }
             ProjectStatus::Maintenance => {
-                insights.push("In maintenance mode - consider reviewing if still needed".to_string());
+                insights
+                    .push("In maintenance mode - consider reviewing if still needed".to_string());
             }
             ProjectStatus::Deprecated => {
                 insights.push("Marked as deprecated - plan migration or removal".to_string());

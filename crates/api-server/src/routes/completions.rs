@@ -54,7 +54,11 @@ pub async fn text_completions(
     State(_state): State<Arc<AppState>>,
     Json(req): Json<CompletionRequest>,
 ) -> ApiResult<Json<CompletionResponse>> {
-    info!("Text completion request: model={}, prompt_len={}", req.model, req.prompt.len());
+    info!(
+        "Text completion request: model={}, prompt_len={}",
+        req.model,
+        req.prompt.len()
+    );
 
     // TODO: Implement actual completion logic
     warn!("Using mock response - completion implementation pending");

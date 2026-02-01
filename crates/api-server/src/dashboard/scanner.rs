@@ -249,9 +249,7 @@ impl ProjectScanner {
 
         if let Ok(output) = output {
             if output.status.success() {
-                let timestamp = String::from_utf8_lossy(&output.stdout)
-                    .trim()
-                    .to_string();
+                let timestamp = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 if !timestamp.is_empty() {
                     return Ok(Some(timestamp));
                 }

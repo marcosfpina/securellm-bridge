@@ -1,12 +1,14 @@
 use anyhow::{Context, Result};
+use deadpool_redis::{Config as RedisConfig, Pool as RedisPool, Runtime};
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use deadpool_redis::{Config as RedisConfig, Pool as RedisPool, Runtime};
 
 use crate::config::Config;
 use crate::services::audit::SqliteAuditSink;
-use securellm_core::intelligence::{PricingRegistry, QoSObservatory, PricingTier, SmartRoutingEngine};
+use securellm_core::intelligence::{
+    PricingRegistry, PricingTier, QoSObservatory, SmartRoutingEngine,
+};
 
 /// Shared application state
 #[derive(Clone)]
@@ -32,19 +34,24 @@ impl AppState {
             .await
             .context("Failed to connect to database")?;
 
-        sqlx::migrate!("./migrations").run(&db_pool).await.context("Failed to run migrations")?;
+        sqlx::migrate!("./migrations")
+            .run(&db_pool)
+            .await
+            .context("Failed to run migrations")?;
 
         let redis_config = RedisConfig::from_url(&config.redis.url);
-        let redis_pool = redis_config.create_pool(Some(Runtime::Tokio1)).context("Failed to create Redis pool")?;
+        let redis_pool = redis_config
+            .create_pool(Some(Runtime::Tokio1))
+            .context("Failed to create Redis pool")?;
 
         let provider_manager = Arc::new(ProviderManager::new(config.clone()).await?);
         let metrics = Arc::new(MetricsCollector::new());
-        
+
         let audit_sink = Arc::new(SqliteAuditSink::new(db_pool.clone()));
         let audit_logger = securellm_core::audit::AuditLogger::with_sink(audit_sink);
-        
+
         let rate_limiter = Arc::new(securellm_core::rate_limit::RateLimiter::default());
-        
+
         let pricing_registry = Arc::new(PricingRegistry::new());
         pricing_registry.load_from_config(vec![
             PricingTier {
@@ -71,7 +78,10 @@ impl AppState {
         ]);
 
         let qos_observatory = Arc::new(QoSObservatory::new(2000, 0.05));
-        let routing_engine = Arc::new(SmartRoutingEngine::new(pricing_registry.clone(), qos_observatory.clone()));
+        let routing_engine = Arc::new(SmartRoutingEngine::new(
+            pricing_registry.clone(),
+            qos_observatory.clone(),
+        ));
 
         Ok(Arc::new(Self {
             config: Arc::new(config),
@@ -104,16 +114,21 @@ impl ProviderManager {
         let mut providers: Vec<Arc<dyn LLMProvider>> = Vec::new();
         let mut breakers = std::collections::HashMap::new();
 
-        // Using a block to contain the mutable borrow if I were to use a closure, 
+        // Using a block to contain the mutable borrow if I were to use a closure,
         // but to avoid lifetime issues, I'll just append directly.
-        
+
         if let Some(cfg) = &config.providers.deepseek {
             if cfg.enabled {
                 let mut p_config = DeepSeekConfig::new(&cfg.api_key);
-                if let Some(url) = &cfg.base_url { p_config = p_config.with_endpoint(url); }
-                if let Ok(p) = DeepSeekProvider::new(p_config) { 
+                if let Some(url) = &cfg.base_url {
+                    p_config = p_config.with_endpoint(url);
+                }
+                if let Ok(p) = DeepSeekProvider::new(p_config) {
                     providers.push(Arc::new(p));
-                    breakers.insert("deepseek".to_string(), CircuitBreaker::new(cfg.circuit_breaker.clone()));
+                    breakers.insert(
+                        "deepseek".to_string(),
+                        CircuitBreaker::new(cfg.circuit_breaker.clone()),
+                    );
                 }
             }
         }
@@ -121,10 +136,15 @@ impl ProviderManager {
         if let Some(cfg) = &config.providers.gemini {
             if cfg.enabled {
                 let mut p_config = GeminiConfig::new(&cfg.api_key);
-                if let Some(url) = &cfg.base_url { p_config.endpoint = url.clone(); }
-                if let Ok(p) = GeminiProvider::new(p_config) { 
+                if let Some(url) = &cfg.base_url {
+                    p_config.endpoint = url.clone();
+                }
+                if let Ok(p) = GeminiProvider::new(p_config) {
                     providers.push(Arc::new(p));
-                    breakers.insert("gemini".to_string(), CircuitBreaker::new(cfg.circuit_breaker.clone()));
+                    breakers.insert(
+                        "gemini".to_string(),
+                        CircuitBreaker::new(cfg.circuit_breaker.clone()),
+                    );
                 }
             }
         }
@@ -132,10 +152,15 @@ impl ProviderManager {
         if let Some(cfg) = &config.providers.groq {
             if cfg.enabled {
                 let mut p_config = GroqConfig::new(&cfg.api_key);
-                if let Some(url) = &cfg.base_url { p_config.endpoint = url.clone(); }
-                if let Ok(p) = GroqProvider::new(p_config) { 
+                if let Some(url) = &cfg.base_url {
+                    p_config.endpoint = url.clone();
+                }
+                if let Ok(p) = GroqProvider::new(p_config) {
                     providers.push(Arc::new(p));
-                    breakers.insert("groq".to_string(), CircuitBreaker::new(cfg.circuit_breaker.clone()));
+                    breakers.insert(
+                        "groq".to_string(),
+                        CircuitBreaker::new(cfg.circuit_breaker.clone()),
+                    );
                 }
             }
         }
@@ -143,10 +168,15 @@ impl ProviderManager {
         if let Some(cfg) = &config.providers.nvidia {
             if cfg.enabled {
                 let mut p_config = NvidiaConfig::new(&cfg.api_key);
-                if let Some(url) = &cfg.base_url { p_config.endpoint = url.clone(); }
-                if let Ok(p) = NvidiaProvider::new(p_config) { 
+                if let Some(url) = &cfg.base_url {
+                    p_config.endpoint = url.clone();
+                }
+                if let Ok(p) = NvidiaProvider::new(p_config) {
                     providers.push(Arc::new(p));
-                    breakers.insert("nvidia".to_string(), CircuitBreaker::new(cfg.circuit_breaker.clone()));
+                    breakers.insert(
+                        "nvidia".to_string(),
+                        CircuitBreaker::new(cfg.circuit_breaker.clone()),
+                    );
                 }
             }
         }
@@ -182,7 +212,12 @@ impl ProviderManager {
     }
 
     pub async fn list_providers(&self) -> Vec<String> {
-        self.providers.read().await.iter().map(|p| p.name().to_string()).collect()
+        self.providers
+            .read()
+            .await
+            .iter()
+            .map(|p| p.name().to_string())
+            .collect()
     }
 }
 
@@ -196,7 +231,11 @@ pub struct CircuitBreaker {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CircuitBreakerState { Closed, Open, HalfOpen }
+pub enum CircuitBreakerState {
+    Closed,
+    Open,
+    HalfOpen,
+}
 
 impl CircuitBreaker {
     pub fn new(config: crate::config::CircuitBreakerConfig) -> Self {
@@ -219,7 +258,9 @@ impl CircuitBreaker {
                     self.success_count = 0;
                 }
             }
-            CircuitBreakerState::Closed => { self.failure_count = 0; }
+            CircuitBreakerState::Closed => {
+                self.failure_count = 0;
+            }
             _ => {}
         }
     }
@@ -253,8 +294,12 @@ impl CircuitBreaker {
                         self.state = CircuitBreakerState::HalfOpen;
                         self.success_count = 0;
                         true
-                    } else { false }
-                } else { true }
+                    } else {
+                        false
+                    }
+                } else {
+                    true
+                }
             }
             CircuitBreakerState::HalfOpen => true,
         }
@@ -262,4 +307,8 @@ impl CircuitBreaker {
 }
 
 pub struct MetricsCollector {}
-impl MetricsCollector { pub fn new() -> Self { Self {} } }
+impl MetricsCollector {
+    pub fn new() -> Self {
+        Self {}
+    }
+}

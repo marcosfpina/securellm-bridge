@@ -24,33 +24,29 @@ pub use queue::TaskQueue;
 pub enum TaskState {
     /// Task is queued but not started
     Pending,
-    
+
     /// Task is currently executing
-    Running {
-        started_at: DateTime<Utc>,
-    },
-    
+    Running { started_at: DateTime<Utc> },
+
     /// Task completed successfully
     Completed {
         duration: Duration,
         result: serde_json::Value,
     },
-    
+
     /// Task failed with error
-    Failed {
-        error: String,
-        duration: Duration,
-    },
-    
+    Failed { error: String, duration: Duration },
+
     /// Task was cancelled
-    Cancelled {
-        reason: Option<String>,
-    },
+    Cancelled { reason: Option<String> },
 }
 
 impl TaskState {
     pub fn is_terminal(&self) -> bool {
-        matches!(self, TaskState::Completed { .. } | TaskState::Failed { .. } | TaskState::Cancelled { .. })
+        matches!(
+            self,
+            TaskState::Completed { .. } | TaskState::Failed { .. } | TaskState::Cancelled { .. }
+        )
     }
 
     pub fn is_running(&self) -> bool {
@@ -63,28 +59,28 @@ impl TaskState {
 pub struct Task {
     /// Unique task identifier
     pub id: Uuid,
-    
+
     /// Human-readable task name
     pub name: String,
-    
+
     /// Task description
     pub description: Option<String>,
-    
+
     /// Priority (0-255, higher = more important)
     pub priority: u8,
-    
+
     /// Current execution state
     pub state: TaskState,
-    
+
     /// Progress percentage (0.0 - 1.0)
     pub progress: f32,
-    
+
     /// Creation timestamp
     pub created_at: DateTime<Utc>,
-    
+
     /// Last update timestamp
     pub updated_at: DateTime<Utc>,
-    
+
     /// Arbitrary metadata
     pub metadata: serde_json::Value,
 }
@@ -162,18 +158,18 @@ impl TaskManager {
     /// Submit a new task to the queue
     pub async fn submit(&self, task: Task) -> Result<Uuid> {
         let task_id = task.id;
-        
+
         // Insert into in-memory map
         self.tasks.insert(task_id, task.clone());
-        
+
         // Persist if enabled
         if let Some(store) = &self.store {
             store.save_task(&task).await?;
         }
-        
+
         // Add to execution queue
         self.queue.enqueue(task);
-        
+
         tracing::info!(task_id = %task_id, "Task submitted");
         Ok(task_id)
     }
@@ -187,12 +183,14 @@ impl TaskManager {
     pub async fn cancel(&self, task_id: &Uuid, reason: Option<String>) -> Result<()> {
         if let Some(mut task) = self.tasks.get_mut(task_id) {
             if !task.state.is_terminal() {
-                task.transition_to(TaskState::Cancelled { reason: reason.clone() });
-                
+                task.transition_to(TaskState::Cancelled {
+                    reason: reason.clone(),
+                });
+
                 if let Some(store) = &self.store {
                     store.save_task(&task).await?;
                 }
-                
+
                 tracing::info!(task_id = %task_id, "Task cancelled");
             }
         }
@@ -218,7 +216,7 @@ impl TaskManager {
     pub async fn update_progress(&self, task_id: &Uuid, progress: f32) -> Result<()> {
         if let Some(mut task) = self.tasks.get_mut(task_id) {
             task.update_progress(progress);
-            
+
             if let Some(store) = &self.store {
                 store.save_task(&task).await?;
             }
@@ -244,7 +242,10 @@ pub struct TaskFilter {
 impl TaskFilter {
     pub fn matches(&self, task: &Task) -> bool {
         if let Some(ref states) = self.states {
-            if !states.iter().any(|s| std::mem::discriminant(s) == std::mem::discriminant(&task.state)) {
+            if !states
+                .iter()
+                .any(|s| std::mem::discriminant(s) == std::mem::discriminant(&task.state))
+            {
                 return false;
             }
         }
@@ -284,10 +285,10 @@ mod tests {
     async fn test_task_submission() {
         let manager = TaskManager::new();
         let task = Task::new("test_submit");
-        
+
         let task_id = manager.submit(task).await.unwrap();
         let retrieved = manager.get(&task_id).unwrap();
-        
+
         assert_eq!(retrieved.name, "test_submit");
     }
 
@@ -295,10 +296,13 @@ mod tests {
     async fn test_task_cancellation() {
         let manager = TaskManager::new();
         let task = Task::new("test_cancel");
-        
+
         let task_id = manager.submit(task).await.unwrap();
-        manager.cancel(&task_id, Some("Test cancellation".to_string())).await.unwrap();
-        
+        manager
+            .cancel(&task_id, Some("Test cancellation".to_string()))
+            .await
+            .unwrap();
+
         let retrieved = manager.get(&task_id).unwrap();
         assert!(matches!(retrieved.state, TaskState::Cancelled { .. }));
     }

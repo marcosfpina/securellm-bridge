@@ -40,7 +40,12 @@ impl TaskPanel {
                 let progress_bar = Self::render_progress_bar(task.progress, 10);
 
                 let content = Line::from(vec![
-                    Span::styled(state_icon, Style::default().fg(state_color).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        state_icon,
+                        Style::default()
+                            .fg(state_color)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Span::raw(" "),
                     Span::styled(&task.name, Style::default().fg(FG_PRIMARY)),
                     Span::raw(" "),
@@ -57,7 +62,10 @@ impl TaskPanel {
                 .border_style(Style::default().fg(BORDER))
                 .title(vec![
                     Span::styled("📋 ", Style::default().fg(SECONDARY)),
-                    Span::styled("Tasks", Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        "Tasks",
+                        Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD),
+                    ),
                 ])
                 .style(Style::default().bg(BG_CARD)),
         );

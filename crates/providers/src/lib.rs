@@ -1,26 +1,26 @@
 use thiserror::Error;
 
-pub mod deepseek;
-pub mod openai;
 pub mod anthropic;
-pub mod ollama;
-pub mod llamacpp;
+pub mod deepseek;
 pub mod gemini;
 pub mod groq;
+pub mod llamacpp;
 pub mod nvidia;
+pub mod ollama;
+pub mod openai;
 
 /// Provider-specific error types
 #[derive(Error, Debug)]
 pub enum ProviderError {
     #[error("HTTP error: {0}")]
     Http(String),
-    
+
     #[error("Serialization error: {0}")]
     Serialization(String),
-    
+
     #[error("Configuration error: {0}")]
     Config(String),
-    
+
     #[error("API error: {0}")]
     Api(String),
 }

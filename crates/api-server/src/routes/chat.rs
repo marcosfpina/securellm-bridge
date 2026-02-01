@@ -1,18 +1,20 @@
 use axum::{
     extract::State,
     response::{
-        IntoResponse,
         sse::{Event, KeepAlive},
-        Sse,
+        IntoResponse, Sse,
     },
     Json,
 };
-use futures::{stream::{self, Stream}, StreamExt};
+use futures::{
+    stream::{self, Stream},
+    StreamExt,
+};
+use securellm_core::audit::{AuditEvent, AuditEventType, AuditLogger, RequestStatus};
 use serde::{Deserialize, Serialize};
 use std::{convert::Infallible, sync::Arc, time::Instant};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
-use securellm_core::audit::{AuditLogger, AuditEvent, RequestStatus, AuditEventType};
 
 use crate::{error::ApiResult, state::AppState};
 
@@ -123,29 +125,44 @@ pub async fn chat_completions(
     // Parse provider and model from model string (format: "provider/model")
     let (provider_name, model_name) = parse_model_identifier(&req.model)?;
 
-    debug!("Routing to provider: {}, model: {}", provider_name, model_name);
+    debug!(
+        "Routing to provider: {}, model: {}",
+        provider_name, model_name
+    );
 
     // Log request received
-    if let Err(e) = state.audit_logger.log_request_received(
-        request_id,
-        &provider_name,
-        &model_name,
-        req.messages.len(),
-        None,  // TODO: Extract client IP from headers
-    ).await {
+    if let Err(e) = state
+        .audit_logger
+        .log_request_received(
+            request_id,
+            &provider_name,
+            &model_name,
+            req.messages.len(),
+            None, // TODO: Extract client IP from headers
+        )
+        .await
+    {
         warn!("Failed to log audit event: {}", e);
     }
 
     // Check if streaming is requested
     if req.stream.unwrap_or(false) {
         // Return SSE stream
-        let stream = create_completion_stream(state, req, provider_name, model_name, request_id).await?;
+        let stream =
+            create_completion_stream(state, req, provider_name, model_name, request_id).await?;
         Ok(Sse::new(stream)
             .keep_alive(KeepAlive::default())
             .into_response())
     } else {
         // Return complete response
-        match create_completion(state.clone(), req.clone(), provider_name.clone(), model_name.clone()).await {
+        match create_completion(
+            state.clone(),
+            req.clone(),
+            provider_name.clone(),
+            model_name.clone(),
+        )
+        .await
+        {
             Ok(response) => {
                 let duration = start.elapsed();
                 let duration_ms = duration.as_millis() as u64;
@@ -153,12 +170,12 @@ pub async fn chat_completions(
                 // 1. Calculate cost using Dynamic Pricing Engine
                 let prompt_tokens = response.usage.prompt_tokens;
                 let completion_tokens = response.usage.completion_tokens;
-                
+
                 let cost = state.pricing_registry.calculate_cost(
                     &provider_name,
                     &model_name,
                     prompt_tokens,
-                    completion_tokens
+                    completion_tokens,
                 );
 
                 // 2. Feed the Anomaly Detector (QoS Observatory)
@@ -166,7 +183,7 @@ pub async fn chat_completions(
                     &provider_name,
                     &model_name,
                     duration,
-                    false // Success
+                    false, // Success
                 );
 
                 // 3. Log response sent with precise cost
@@ -202,16 +219,15 @@ pub async fn chat_completions(
                     &provider_name,
                     &model_name,
                     duration,
-                    true // Error
+                    true, // Error
                 );
 
                 // Log request failed
-                if let Err(log_err) = state.audit_logger.log_request_failed(
-                    request_id,
-                    &provider_name,
-                    &e.to_string(),
-                    duration_ms,
-                ).await {
+                if let Err(log_err) = state
+                    .audit_logger
+                    .log_request_failed(request_id, &provider_name, &e.to_string(), duration_ms)
+                    .await
+                {
                     warn!("Failed to log audit event: {}", log_err);
                 }
 
@@ -233,13 +249,9 @@ fn parse_model_identifier(model: &str) -> ApiResult<(String, String)> {
 }
 
 use securellm_core::{
-    Request as CoreRequest,
+    intelligence::RoutingStrategy, request::RequestParameters, Message as CoreMessage,
+    MessageContent as CoreMessageContent, MessageRole as CoreMessageRole, Request as CoreRequest,
     Response as CoreResponse,
-    Message as CoreMessage,
-    MessageRole as CoreMessageRole,
-    MessageContent as CoreMessageContent,
-    request::RequestParameters,
-    intelligence::RoutingStrategy,
 };
 
 // ... (existing helper functions) ...
@@ -261,10 +273,9 @@ async fn create_completion(
         ]
     };
 
-    let ranked_candidates = state.routing_engine.select_candidates(
-        candidates, 
-        RoutingStrategy::LowestCost
-    );
+    let ranked_candidates = state
+        .routing_engine
+        .select_candidates(candidates, RoutingStrategy::LowestCost);
 
     let mut last_error = None;
 
@@ -291,14 +302,18 @@ async fn create_completion(
         match provider.send_request(core_req).await {
             Ok(core_resp) => {
                 // Success! Report to QoS and Circuit Breaker
-                state.qos_observatory.observe_request(&p_name, &m_name, start.elapsed(), false);
+                state
+                    .qos_observatory
+                    .observe_request(&p_name, &m_name, start.elapsed(), false);
                 state.provider_manager.report_result(&p_name, true).await;
                 return Ok(convert_response(core_resp));
             }
             Err(e) => {
                 tracing::warn!("Provider {} failed: {}. Trying fallback...", p_name, e);
                 // Failure! Report to QoS and Circuit Breaker
-                state.qos_observatory.observe_request(&p_name, &m_name, start.elapsed(), true);
+                state
+                    .qos_observatory
+                    .observe_request(&p_name, &m_name, start.elapsed(), true);
                 state.provider_manager.report_result(&p_name, false).await;
                 last_error = Some(e);
                 continue;
@@ -306,9 +321,10 @@ async fn create_completion(
         }
     }
 
-    Err(crate::error::ApiError::InternalError(
-        format!("All providers failed. Last error: {:?}", last_error)
-    ))
+    Err(crate::error::ApiError::InternalError(format!(
+        "All providers failed. Last error: {:?}",
+        last_error
+    )))
 }
 
 fn convert_message(msg: ChatMessage) -> CoreMessage {
@@ -332,23 +348,27 @@ fn convert_response(resp: CoreResponse) -> ChatCompletionResponse {
         object: "chat.completion".to_string(),
         created: resp.metadata.created_at.timestamp(),
         model: resp.model,
-        choices: resp.choices.into_iter().map(|c| ChatChoice {
-            index: c.index,
-            message: ChatMessage {
-                role: match c.message.role {
-                    CoreMessageRole::System => "system".to_string(),
-                    CoreMessageRole::User => "user".to_string(),
-                    CoreMessageRole::Assistant => "assistant".to_string(),
-                    CoreMessageRole::Function => "function".to_string(),
+        choices: resp
+            .choices
+            .into_iter()
+            .map(|c| ChatChoice {
+                index: c.index,
+                message: ChatMessage {
+                    role: match c.message.role {
+                        CoreMessageRole::System => "system".to_string(),
+                        CoreMessageRole::User => "user".to_string(),
+                        CoreMessageRole::Assistant => "assistant".to_string(),
+                        CoreMessageRole::Function => "function".to_string(),
+                    },
+                    content: match c.message.content {
+                        CoreMessageContent::Text(t) => t,
+                        _ => "".to_string(), // TODO: Handle parts
+                    },
+                    name: c.message.name,
                 },
-                content: match c.message.content {
-                    CoreMessageContent::Text(t) => t,
-                    _ => "".to_string(), // TODO: Handle parts
-                },
-                name: c.message.name,
-            },
-            finish_reason: Some(format!("{:?}", c.finish_reason).to_lowercase()),
-        }).collect(),
+                finish_reason: Some(format!("{:?}", c.finish_reason).to_lowercase()),
+            })
+            .collect(),
         usage: Usage {
             prompt_tokens: resp.usage.prompt_tokens,
             completion_tokens: resp.usage.completion_tokens,
@@ -356,7 +376,6 @@ fn convert_response(resp: CoreResponse) -> ChatCompletionResponse {
         },
     }
 }
-
 
 /// Create streaming completion
 async fn create_completion_stream(
@@ -368,7 +387,7 @@ async fn create_completion_stream(
 ) -> ApiResult<impl Stream<Item = Result<Event, Infallible>>> {
     // TODO: Implement actual provider streaming
     // For now, return a mock stream
-    
+
     warn!("Using mock stream - provider implementation pending");
 
     let completion_id = format!("chatcmpl-{}", uuid::Uuid::new_v4());

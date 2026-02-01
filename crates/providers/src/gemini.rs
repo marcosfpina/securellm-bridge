@@ -1,11 +1,11 @@
 use crate::{ProviderError, Result};
 use async_trait::async_trait;
-use securellm_core::{
-    Choice, ContentPart, Error, HealthStatus, LLMProvider, Message, MessageContent, 
-    MessageRole, ModelInfo, ModelPricing, ProviderCapabilities, ProviderHealth, Request, 
-    Response, FinishReason, TokenUsage, ResponseMetadata,
-};
 use secrecy::{ExposeSecret, SecretString};
+use securellm_core::{
+    Choice, ContentPart, Error, FinishReason, HealthStatus, LLMProvider, Message, MessageContent,
+    MessageRole, ModelInfo, ModelPricing, ProviderCapabilities, ProviderHealth, Request, Response,
+    ResponseMetadata, TokenUsage,
+};
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
@@ -41,7 +41,7 @@ impl GeminiProvider {
             .timeout(config.timeout)
             .build()
             .map_err(|e| ProviderError::Http(format!("Failed to create HTTP client: {}", e)))?;
-        
+
         Ok(Self { config, client })
     }
 
@@ -49,7 +49,7 @@ impl GeminiProvider {
         match role {
             MessageRole::User => "user".to_string(),
             MessageRole::Assistant => "model".to_string(),
-            MessageRole::System => "user".to_string(), 
+            MessageRole::System => "user".to_string(),
             MessageRole::Function => "function".to_string(),
         }
     }
@@ -74,7 +74,7 @@ impl LLMProvider for GeminiProvider {
 
     async fn send_request(&self, request: Request) -> securellm_core::Result<Response> {
         let start = Instant::now();
-        
+
         // 1. Convert Messages
         let mut contents = Vec::new();
         let mut system_instruction = None;
@@ -85,7 +85,9 @@ impl LLMProvider for GeminiProvider {
                     if let MessageContent::Text(text) = &msg.content {
                         system_instruction = Some(GeminiContent {
                             role: None,
-                            parts: vec![GeminiPart { text: Some(text.clone()) }],
+                            parts: vec![GeminiPart {
+                                text: Some(text.clone()),
+                            }],
                         });
                     }
                 }
@@ -93,13 +95,17 @@ impl LLMProvider for GeminiProvider {
                     let text = match &msg.content {
                         MessageContent::Text(t) => t.clone(),
                         MessageContent::Parts(parts) => {
-                            parts.iter().map(|p| match p {
-                                ContentPart::Text { text } => text.as_str(),
-                                _ => "", // Vision explicitly disabled
-                            }).collect::<Vec<_>>().join(" ")
+                            parts
+                                .iter()
+                                .map(|p| match p {
+                                    ContentPart::Text { text } => text.as_str(),
+                                    _ => "", // Vision explicitly disabled
+                                })
+                                .collect::<Vec<_>>()
+                                .join(" ")
                         }
                     };
-                    
+
                     contents.push(GeminiContent {
                         role: Some(Self::convert_role(msg.role)),
                         parts: vec![GeminiPart { text: Some(text) }],
@@ -111,10 +117,22 @@ impl LLMProvider for GeminiProvider {
         // 2. Configure Safety Settings (OFF)
         // Explicitly disabling all safety filters to prevent false positives
         let safety_settings = vec![
-            GeminiSafetySetting { category: "HARM_CATEGORY_HARASSMENT".to_string(), threshold: "BLOCK_NONE".to_string() },
-            GeminiSafetySetting { category: "HARM_CATEGORY_HATE_SPEECH".to_string(), threshold: "BLOCK_NONE".to_string() },
-            GeminiSafetySetting { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT".to_string(), threshold: "BLOCK_NONE".to_string() },
-            GeminiSafetySetting { category: "HARM_CATEGORY_DANGEROUS_CONTENT".to_string(), threshold: "BLOCK_NONE".to_string() },
+            GeminiSafetySetting {
+                category: "HARM_CATEGORY_HARASSMENT".to_string(),
+                threshold: "BLOCK_NONE".to_string(),
+            },
+            GeminiSafetySetting {
+                category: "HARM_CATEGORY_HATE_SPEECH".to_string(),
+                threshold: "BLOCK_NONE".to_string(),
+            },
+            GeminiSafetySetting {
+                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT".to_string(),
+                threshold: "BLOCK_NONE".to_string(),
+            },
+            GeminiSafetySetting {
+                category: "HARM_CATEGORY_DANGEROUS_CONTENT".to_string(),
+                threshold: "BLOCK_NONE".to_string(),
+            },
         ];
 
         // 3. Build Request Body
@@ -131,9 +149,14 @@ impl LLMProvider for GeminiProvider {
         };
 
         // 4. Send HTTP Request
-        let url = format!("{}/models/{}:generateContent", self.config.endpoint, request.model);
+        let url = format!(
+            "{}/models/{}:generateContent",
+            self.config.endpoint, request.model
+        );
 
-        let response = self.client.post(&url)
+        let response = self
+            .client
+            .post(&url)
             .header("x-goog-api-key", self.config.api_key.expose_secret())
             .json(&gemini_req)
             .send()
@@ -141,7 +164,7 @@ impl LLMProvider for GeminiProvider {
             .map_err(|e| Error::Network(format!("Gemini request failed: {}", e)))?;
 
         let status = response.status();
-        
+
         if !status.is_success() {
             let err_text = response.text().await.unwrap_or_default();
             return Err(Error::Provider {
@@ -150,29 +173,46 @@ impl LLMProvider for GeminiProvider {
             });
         }
 
-        let gemini_resp: GeminiResponse = response.json().await
+        let gemini_resp: GeminiResponse = response
+            .json()
+            .await
             .map_err(|e| Error::Serialization(format!("Failed to parse Gemini response: {}", e)))?;
 
         // 5. Convert Response
         let processing_time = start.elapsed();
-        
+
         if gemini_resp.candidates.is_empty() {
-             // Even with BLOCK_NONE, Google might block severe policy violations
-             return Err(Error::Provider {
+            // Even with BLOCK_NONE, Google might block severe policy violations
+            return Err(Error::Provider {
                 provider: "gemini".to_string(),
                 message: "No candidates returned (External policy block?)".to_string(),
             });
         }
 
         let first_candidate = &gemini_resp.candidates[0];
-        let content_text = first_candidate.content.parts.first()
+        let content_text = first_candidate
+            .content
+            .parts
+            .first()
             .and_then(|p| p.text.clone())
             .unwrap_or_default();
 
         let usage = TokenUsage {
-            prompt_tokens: gemini_resp.usage_metadata.as_ref().map(|u| u.prompt_token_count).unwrap_or(0),
-            completion_tokens: gemini_resp.usage_metadata.as_ref().map(|u| u.candidates_token_count).unwrap_or(0),
-            total_tokens: gemini_resp.usage_metadata.as_ref().map(|u| u.total_token_count).unwrap_or(0),
+            prompt_tokens: gemini_resp
+                .usage_metadata
+                .as_ref()
+                .map(|u| u.prompt_token_count)
+                .unwrap_or(0),
+            completion_tokens: gemini_resp
+                .usage_metadata
+                .as_ref()
+                .map(|u| u.candidates_token_count)
+                .unwrap_or(0),
+            total_tokens: gemini_resp
+                .usage_metadata
+                .as_ref()
+                .map(|u| u.total_token_count)
+                .unwrap_or(0),
             estimated_cost: None,
         };
 
@@ -209,12 +249,20 @@ impl LLMProvider for GeminiProvider {
     }
 
     async fn health_check(&self) -> securellm_core::Result<ProviderHealth> {
-        let url = format!("{}/models/gemini-2.0-flash?key={}", self.config.endpoint, self.config.api_key.expose_secret());
+        let url = format!(
+            "{}/models/gemini-2.0-flash?key={}",
+            self.config.endpoint,
+            self.config.api_key.expose_secret()
+        );
         let start = Instant::now();
         let response = self.client.get(&url).send().await;
 
         Ok(ProviderHealth {
-            status: if response.is_ok() { HealthStatus::Healthy } else { HealthStatus::Unhealthy },
+            status: if response.is_ok() {
+                HealthStatus::Healthy
+            } else {
+                HealthStatus::Unhealthy
+            },
             latency_ms: Some(start.elapsed().as_millis() as u64),
             message: None,
             timestamp: chrono::Utc::now(),

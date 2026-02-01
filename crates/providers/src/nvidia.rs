@@ -1,11 +1,11 @@
 use crate::{ProviderError, Result};
 use async_trait::async_trait;
-use securellm_core::{
-    Choice, Error, HealthStatus, LLMProvider, Message, MessageContent, 
-    MessageRole, ModelInfo, ModelPricing, ProviderCapabilities, ProviderHealth, Request, 
-    Response, FinishReason, TokenUsage, ResponseMetadata,
-};
 use secrecy::{ExposeSecret, SecretString};
+use securellm_core::{
+    Choice, Error, FinishReason, HealthStatus, LLMProvider, Message, MessageContent, MessageRole,
+    ModelInfo, ModelPricing, ProviderCapabilities, ProviderHealth, Request, Response,
+    ResponseMetadata, TokenUsage,
+};
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
@@ -32,17 +32,22 @@ pub struct NvidiaProvider {
 
 impl NvidiaProvider {
     pub fn new(config: NvidiaConfig) -> Result<Self> {
-        let client = reqwest::Client::builder().build()
+        let client = reqwest::Client::builder()
+            .build()
             .map_err(|e| ProviderError::Http(format!("Failed to create HTTP client: {}", e)))?;
-        
+
         Ok(Self { config, client })
     }
 }
 
 #[async_trait]
 impl LLMProvider for NvidiaProvider {
-    fn name(&self) -> &str { "nvidia" }
-    fn version(&self) -> &str { "v1" }
+    fn name(&self) -> &str {
+        "nvidia"
+    }
+    fn version(&self) -> &str {
+        "v1"
+    }
 
     fn validate_config(&self) -> securellm_core::Result<()> {
         if self.config.api_key.expose_secret().is_empty() {
@@ -54,9 +59,14 @@ impl LLMProvider for NvidiaProvider {
     async fn send_request(&self, request: Request) -> securellm_core::Result<Response> {
         let start = Instant::now();
         let url = format!("{}/chat/completions", self.config.endpoint);
-        
-        let response = self.client.post(&url)
-            .header("Authorization", format!("Bearer {}", self.config.api_key.expose_secret()))
+
+        let response = self
+            .client
+            .post(&url)
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.config.api_key.expose_secret()),
+            )
             .json(&serde_json::json!({
                 "model": request.model,
                 "messages": request.messages,
@@ -69,13 +79,15 @@ impl LLMProvider for NvidiaProvider {
 
         let status = response.status();
         if !status.is_success() {
-             return Err(Error::Provider {
+            return Err(Error::Provider {
                 provider: "nvidia".to_string(),
                 message: format!("API Error {}", status),
             });
         }
 
-        let oai_resp: serde_json::Value = response.json().await
+        let oai_resp: serde_json::Value = response
+            .json()
+            .await
             .map_err(|e| Error::Serialization(format!("Failed to parse NVIDIA response: {}", e)))?;
 
         let processing_time = start.elapsed();
@@ -85,10 +97,11 @@ impl LLMProvider for NvidiaProvider {
             id: oai_resp["id"].as_str().unwrap_or_default().to_string(),
             provider: "nvidia".to_string(),
             model: request.model,
-            choices: vec![], 
+            choices: vec![],
             usage: TokenUsage {
                 prompt_tokens: oai_resp["usage"]["prompt_tokens"].as_u64().unwrap_or(0) as u32,
-                completion_tokens: oai_resp["usage"]["completion_tokens"].as_u64().unwrap_or(0) as u32,
+                completion_tokens: oai_resp["usage"]["completion_tokens"].as_u64().unwrap_or(0)
+                    as u32,
                 total_tokens: oai_resp["usage"]["total_tokens"].as_u64().unwrap_or(0) as u32,
                 estimated_cost: None,
             },
@@ -124,20 +137,18 @@ impl LLMProvider for NvidiaProvider {
     }
 
     async fn list_models(&self) -> securellm_core::Result<Vec<ModelInfo>> {
-        Ok(vec![
-            ModelInfo {
-                id: "nvidia/llama-3.1-405b-instruct".to_string(),
-                name: "Llama 3.1 405B".to_string(),
-                description: Some("NVIDIA NIM optimized Llama 3.1 405B".to_string()),
-                context_window: Some(128000),
-                max_output_tokens: Some(4096),
-                capabilities: vec!["chat".to_string()],
-                pricing: Some(ModelPricing {
-                    input_cost_per_1k: 0.001,
-                    output_cost_per_1k: 0.003,
-                    currency: "USD".to_string(),
-                }),
-            },
-        ])
+        Ok(vec![ModelInfo {
+            id: "nvidia/llama-3.1-405b-instruct".to_string(),
+            name: "Llama 3.1 405B".to_string(),
+            description: Some("NVIDIA NIM optimized Llama 3.1 405B".to_string()),
+            context_window: Some(128000),
+            max_output_tokens: Some(4096),
+            capabilities: vec!["chat".to_string()],
+            pricing: Some(ModelPricing {
+                input_cost_per_1k: 0.001,
+                output_cost_per_1k: 0.003,
+                currency: "USD".to_string(),
+            }),
+        }])
     }
 }

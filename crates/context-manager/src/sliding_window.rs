@@ -24,9 +24,9 @@ impl SlidingWindow {
 
         // Process from newest to oldest
         for msg in messages.iter().rev() {
-            let msg_tokens = msg.tokens.unwrap_or_else(|| {
-                tokenizer.encode_with_special_tokens(&msg.content).len()
-            });
+            let msg_tokens = msg
+                .tokens
+                .unwrap_or_else(|| tokenizer.encode_with_special_tokens(&msg.content).len());
 
             if total_tokens + msg_tokens <= self.max_tokens {
                 total_tokens += msg_tokens;
@@ -45,7 +45,10 @@ impl SlidingWindow {
             let dropped_count = messages.len() - kept_messages.len();
             let truncation_msg = Message::new(
                 "system",
-                format!("[Context truncated: {} older messages removed to fit token budget]", dropped_count)
+                format!(
+                    "[Context truncated: {} older messages removed to fit token budget]",
+                    dropped_count
+                ),
             );
             kept_messages.insert(0, truncation_msg);
         }
@@ -75,7 +78,7 @@ mod tests {
 
         // Should keep recent messages
         assert!(optimized.len() < messages.len() || optimized.len() == messages.len());
-        
+
         // Last message should be preserved
         assert_eq!(optimized.last().unwrap().content, "Recent response");
     }

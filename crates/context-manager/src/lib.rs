@@ -46,13 +46,13 @@ impl Message {
 pub struct CompressedContext {
     /// Zstd-compressed data
     pub data: Vec<u8>,
-    
+
     /// Original token count
     pub original_tokens: usize,
-    
+
     /// Compressed byte size
     pub compressed_bytes: usize,
-    
+
     /// Original byte size (before compression)
     pub original_bytes: usize,
 }
@@ -86,9 +86,8 @@ pub struct ContextManager {
 impl ContextManager {
     /// Create new context manager
     pub fn new() -> Result<Self> {
-        let tokenizer = cl100k_base()
-            .context("Failed to initialize tokenizer")?;
-        
+        let tokenizer = cl100k_base().context("Failed to initialize tokenizer")?;
+
         Ok(Self {
             cache: Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap())),
             tokenizer,
@@ -99,9 +98,8 @@ impl ContextManager {
 
     /// Create with custom compression level (1-22)
     pub fn with_compression_level(level: i32) -> Result<Self> {
-        let tokenizer = cl100k_base()
-            .context("Failed to initialize tokenizer")?;
-        
+        let tokenizer = cl100k_base().context("Failed to initialize tokenizer")?;
+
         Ok(Self {
             cache: Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap())),
             tokenizer,
@@ -117,11 +115,11 @@ impl ContextManager {
 
     /// Count tokens in messages
     pub fn count_message_tokens(&self, messages: &[Message]) -> usize {
-        messages.iter()
+        messages
+            .iter()
             .map(|msg| {
-                msg.tokens.unwrap_or_else(|| {
-                    self.count_tokens(&msg.content)
-                })
+                msg.tokens
+                    .unwrap_or_else(|| self.count_tokens(&msg.content))
             })
             .sum()
     }
@@ -220,14 +218,14 @@ mod tests {
     #[test]
     fn test_compression_ratio() {
         let manager = ContextManager::new().unwrap();
-        
+
         // Long repetitive text compresses well
         let long_messages = (0..100)
             .map(|i| Message::new("user", format!("Test message number {}", i)))
             .collect::<Vec<_>>();
 
         let compressed = manager.compress(&long_messages).unwrap();
-        
+
         // Should achieve significant compression
         assert!(compressed.ratio() > 2.0);
         assert!(compressed.savings_percent() > 50.0);

@@ -117,20 +117,28 @@ impl Config {
         Ok(Config {
             server: ServerConfig {
                 host: std::env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
-                port: std::env::var("SERVER_PORT").unwrap_or_else(|_| "8080".to_string()).parse().context("Invalid SERVER_PORT")?,
-                workers: std::env::var("SERVER_WORKERS").unwrap_or_else(|_| "4".to_string()).parse().unwrap_or(4),
+                port: std::env::var("SERVER_PORT")
+                    .unwrap_or_else(|_| "8080".to_string())
+                    .parse()
+                    .context("Invalid SERVER_PORT")?,
+                workers: std::env::var("SERVER_WORKERS")
+                    .unwrap_or_else(|_| "4".to_string())
+                    .parse()
+                    .unwrap_or(4),
                 request_timeout_secs: 30,
                 max_request_size_bytes: 10 * 1024 * 1024,
             },
             database: DatabaseConfig {
-                url: std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:/var/lib/securellm/models.db".to_string()),
+                url: std::env::var("DATABASE_URL")
+                    .unwrap_or_else(|_| "sqlite:/var/lib/securellm/models.db".to_string()),
                 max_connections: 10,
                 min_connections: 2,
                 connect_timeout_secs: 10,
                 idle_timeout_secs: 600,
             },
             redis: RedisConfig {
-                url: std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string()),
+                url: std::env::var("REDIS_URL")
+                    .unwrap_or_else(|_| "redis://localhost:6379".to_string()),
                 max_connections: 10,
                 connect_timeout_secs: 5,
                 ttl_secs: 3600,
@@ -146,8 +154,16 @@ impl Config {
                 nvidia: Self::load_provider_config("NVIDIA"),
             },
             security: SecurityConfig {
-                api_keys: std::env::var("API_KEYS").unwrap_or_default().split(',').filter(|k| !k.is_empty()).map(|k| k.to_string()).collect(),
-                require_auth: std::env::var("REQUIRE_AUTH").unwrap_or_else(|_| "false".to_string()).parse().unwrap_or(false),
+                api_keys: std::env::var("API_KEYS")
+                    .unwrap_or_default()
+                    .split(',')
+                    .filter(|k| !k.is_empty())
+                    .map(|k| k.to_string())
+                    .collect(),
+                require_auth: std::env::var("REQUIRE_AUTH")
+                    .unwrap_or_else(|_| "false".to_string())
+                    .parse()
+                    .unwrap_or(false),
                 allowed_origins: vec!["*".to_string()],
             },
             telemetry: TelemetryConfig {
@@ -160,30 +176,49 @@ impl Config {
     }
 
     fn load_provider_config(prefix: &str) -> Option<ProviderConfig> {
-        let enabled = std::env::var(format!("{}_ENABLED", prefix)).unwrap_or_else(|_| "false".to_string()).parse().unwrap_or(false);
-        if !enabled { return None; }
-        std::env::var(format!("{}_API_KEY", prefix)).ok().map(|api_key| {
-            ProviderConfig {
+        let enabled = std::env::var(format!("{}_ENABLED", prefix))
+            .unwrap_or_else(|_| "false".to_string())
+            .parse()
+            .unwrap_or(false);
+        if !enabled {
+            return None;
+        }
+        std::env::var(format!("{}_API_KEY", prefix))
+            .ok()
+            .map(|api_key| ProviderConfig {
                 enabled,
                 api_key,
                 base_url: std::env::var(format!("{}_BASE_URL", prefix)).ok(),
                 timeout_secs: 30,
                 max_retries: 3,
                 rate_limit_per_minute: 60,
-                circuit_breaker: CircuitBreakerConfig { failure_threshold: 5, success_threshold: 2, timeout_secs: 60 },
-            }
-        })
+                circuit_breaker: CircuitBreakerConfig {
+                    failure_threshold: 5,
+                    success_threshold: 2,
+                    timeout_secs: 60,
+                },
+            })
     }
 
     fn load_llamacpp_config() -> Option<LlamaCppConfig> {
-        let enabled = std::env::var("LLAMACPP_ENABLED").unwrap_or_else(|_| "true".to_string()).parse().unwrap_or(true);
-        if !enabled { return None; }
+        let enabled = std::env::var("LLAMACPP_ENABLED")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse()
+            .unwrap_or(true);
+        if !enabled {
+            return None;
+        }
         Some(LlamaCppConfig {
             enabled,
-            base_url: std::env::var("LLAMACPP_BASE_URL").unwrap_or_else(|_| "http://localhost:5001".to_string()),
+            base_url: std::env::var("LLAMACPP_BASE_URL")
+                .unwrap_or_else(|_| "http://localhost:5001".to_string()),
             timeout_secs: 60,
             max_retries: 3,
-            circuit_breaker: CircuitBreakerConfig { failure_threshold: 5, success_threshold: 2, timeout_secs: 60 },
+            circuit_breaker: CircuitBreakerConfig {
+                failure_threshold: 5,
+                success_threshold: 2,
+                timeout_secs: 60,
+            },
         })
     }
 

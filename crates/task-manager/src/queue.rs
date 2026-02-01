@@ -75,15 +75,15 @@ mod tests {
     #[test]
     fn test_priority_ordering() {
         let queue = TaskQueue::new();
-        
+
         let low = Task::new("low").with_priority(50);
         let high = Task::new("high").with_priority(200);
         let medium = Task::new("medium").with_priority(100);
-        
+
         queue.enqueue(low);
         queue.enqueue(high);
         queue.enqueue(medium);
-        
+
         assert_eq!(queue.dequeue().unwrap().name, "high");
         assert_eq!(queue.dequeue().unwrap().name, "medium");
         assert_eq!(queue.dequeue().unwrap().name, "low");

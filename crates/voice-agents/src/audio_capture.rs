@@ -37,9 +37,15 @@ impl AudioCapture {
         buffer.lock().unwrap().clear();
 
         let stream = match config.sample_format() {
-            cpal::SampleFormat::F32 => self.build_input_stream::<f32>(&device, &config.into(), buffer)?,
-            cpal::SampleFormat::I16 => self.build_input_stream::<i16>(&device, &config.into(), buffer)?,
-            cpal::SampleFormat::U16 => self.build_input_stream::<u16>(&device, &config.into(), buffer)?,
+            cpal::SampleFormat::F32 => {
+                self.build_input_stream::<f32>(&device, &config.into(), buffer)?
+            }
+            cpal::SampleFormat::I16 => {
+                self.build_input_stream::<i16>(&device, &config.into(), buffer)?
+            }
+            cpal::SampleFormat::U16 => {
+                self.build_input_stream::<u16>(&device, &config.into(), buffer)?
+            }
             _ => anyhow::bail!("Unsupported sample format"),
         };
 
@@ -63,7 +69,7 @@ impl AudioCapture {
             move |data: &[T], _: &cpal::InputCallbackInfo| {
                 let mut buf = buffer.lock().unwrap();
                 // Simple conversion - works for most sample types
-                buf.extend(data.iter().map(|_| 0.0f32));  // Placeholder for now
+                buf.extend(data.iter().map(|_| 0.0f32)); // Placeholder for now
             },
             |err| eprintln!("Audio capture error: {}", err),
             None,
@@ -74,7 +80,7 @@ impl AudioCapture {
 
     pub fn stop(&mut self) -> Result<Vec<f32>> {
         *self.is_active.lock().unwrap() = false;
-        
+
         if let Some(stream) = self.stream.take() {
             drop(stream);
         }
