@@ -2,8 +2,7 @@
 // TODO: Implement encryption, hashing, and signing
 
 use crate::{Result, SecurityError};
-use ring::aead::{self, Aad, BoundKey, NonceSequence, NONCE_LEN};
-use ring::error::Unspecified;
+use ring::aead::NONCE_LEN;
 use ring::rand::{SecureRandom, SystemRandom};
 
 /// Encryption service for data at rest

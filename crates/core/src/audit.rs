@@ -175,10 +175,10 @@ impl AuditLogger {
 
     // Cost estimation helper
     pub fn estimate_cost(
-        provider: &str,
-        model: &str,
-        prompt_tokens: u32,
-        completion_tokens: u32,
+        _provider: &str,
+        _model: &str,
+        _prompt_tokens: u32,
+        _completion_tokens: u32,
     ) -> f64 {
         // ... logic handled by PricingRegistry now, but kept for legacy/test ...
         0.0

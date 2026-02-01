@@ -10,7 +10,7 @@ use futures::{
     stream::{self, Stream},
     StreamExt,
 };
-use securellm_core::audit::{AuditEvent, AuditEventType, AuditLogger, RequestStatus};
+use securellm_core::audit::{AuditEvent, AuditEventType, RequestStatus};
 use serde::{Deserialize, Serialize};
 use std::{convert::Infallible, sync::Arc, time::Instant};
 use tracing::{debug, info, warn};
@@ -267,9 +267,11 @@ async fn create_completion(
         vec![(provider_name.clone(), model_name.clone())]
     } else {
         vec![
+            ("llamacpp".to_string(), "local-model".to_string()),
             ("deepseek".to_string(), "deepseek-chat".to_string()),
-            ("gemini".to_string(), "gemini-2.0-flash".to_string()),
             ("groq".to_string(), "llama-3.3-70b-versatile".to_string()),
+            ("openai".to_string(), "gpt-4-turbo".to_string()),
+            ("anthropic".to_string(), "claude-3-sonnet-20240229".to_string()),
         ]
     };
 

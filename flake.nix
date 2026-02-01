@@ -189,6 +189,9 @@
             openssl
             sqlite
 
+            # Runtime dependencies
+            redis
+
             # Audio dependencies for voice agents
             alsa-lib
             pulseaudio
@@ -205,11 +208,44 @@
             export LIBCLANG_PATH="${pkgs.libclang.lib}/lib"
             export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH"
 
+            # SecureLLM Bridge Environment Variables
+            export DATABASE_URL="sqlite:$PWD/data/models.db"
+            export REDIS_URL="redis://localhost:6379"
+            export LOG_DIR="$PWD/logs"
+            export SERVER_HOST="0.0.0.0"
+            export SERVER_PORT="8080"
+
+            # Provider Configuration
+            export LLAMACPP_ENABLED=true
+            export LLAMACPP_BASE_URL="http://localhost:8081"
+            export LLAMACPP_MODEL_NAME="local-model"
+
+            export DEEPSEEK_ENABLED="''${DEEPSEEK_ENABLED:-false}"
+            export OPENAI_ENABLED="''${OPENAI_ENABLED:-false}"
+            export ANTHROPIC_ENABLED="''${ANTHROPIC_ENABLED:-false}"
+            export GROQ_ENABLED="''${GROQ_ENABLED:-false}"
+            export GEMINI_ENABLED="''${GEMINI_ENABLED:-false}"
+            export NVIDIA_ENABLED="''${NVIDIA_ENABLED:-false}"
+
+            # Security
+            export REQUIRE_AUTH=false
+            export LOG_LEVEL=info
+
+            # Create necessary directories
+            mkdir -p data logs
+
             echo "🦀 SecureLLM Bridge Development Environment"
             echo "  Rust: $(rustc --version)"
             echo "  Node: $(node --version)"
             echo ""
+            echo "📊 Configuration:"
+            echo "  - Database: $DATABASE_URL"
+            echo "  - Redis: $REDIS_URL"
+            echo "  - Server: $SERVER_HOST:$SERVER_PORT"
+            echo "  - LlamaCpp (llama-swap): $LLAMACPP_BASE_URL"
+            echo ""
             echo "Commands:"
+            echo "  cargo run --bin securellm-api-server  - Start API server"
             echo "  cargo build         - Build Rust workspace"
             echo "  cargo test          - Run Rust tests"
             echo "  cd mcp-server && npm run build  - Build MCP server"

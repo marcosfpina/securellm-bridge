@@ -30,6 +30,28 @@ struct LlamaCppResponse {
     tokens_evaluated: u32,
 }
 
+#[derive(Deserialize)]
+struct LlamaCppModelsResponse {
+    data: Vec<LlamaCppModelData>,
+}
+
+#[derive(Deserialize)]
+struct LlamaCppModelData {
+    id: String,
+    #[serde(default)]
+    owned_by: String,
+    #[serde(default)]
+    meta: Option<LlamaCppModelMeta>,
+}
+
+#[derive(Deserialize)]
+struct LlamaCppModelMeta {
+    #[serde(default)]
+    n_ctx_train: Option<u32>,
+    #[serde(default)]
+    n_params: Option<u64>,
+}
+
 impl LlamaCppProvider {
     pub fn new(port: u16, model_name: impl Into<String>) -> Result<Self> {
         Ok(Self {
@@ -185,18 +207,83 @@ impl LLMProvider for LlamaCppProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        Ok(vec![ModelInfo {
-            id: self.model_name.clone(),
-            name: self.model_name.clone(),
-            description: Some("Local LlamaCpp model".to_string()),
-            context_window: Some(8192),
-            max_output_tokens: Some(4096),
-            capabilities: vec!["completion".to_string()],
-            pricing: Some(ModelPricing {
-                input_cost_per_1k: 0.0,
-                output_cost_per_1k: 0.0,
-                currency: "USD".to_string(),
-            }),
-        }])
+        // Try to fetch models from llama.cpp API
+        let response = self
+            .client
+            .get(format!("{}/v1/models", self.base_url))
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) if resp.status().is_success() => {
+                let models_response: LlamaCppModelsResponse = resp
+                    .json()
+                    .await
+                    .map_err(|e| Error::Serialization(e.to_string()))?;
+
+                let model_infos: Vec<ModelInfo> = models_response
+                    .data
+                    .into_iter()
+                    .map(|model| {
+                        let context_window = model
+                            .meta
+                            .as_ref()
+                            .and_then(|m| m.n_ctx_train);
+
+                        ModelInfo {
+                            id: model.id.clone(),
+                            name: model.id.clone(),
+                            description: Some(format!(
+                                "LlamaCpp model (owned by: {})",
+                                model.owned_by
+                            )),
+                            context_window: context_window.or(Some(8192)),
+                            max_output_tokens: Some(4096),
+                            capabilities: vec!["completion".to_string()],
+                            pricing: Some(ModelPricing {
+                                input_cost_per_1k: 0.0,
+                                output_cost_per_1k: 0.0,
+                                currency: "USD".to_string(),
+                            }),
+                        }
+                    })
+                    .collect();
+
+                if model_infos.is_empty() {
+                    // Fallback to default model if API returns empty list
+                    Ok(vec![ModelInfo {
+                        id: self.model_name.clone(),
+                        name: self.model_name.clone(),
+                        description: Some("Local LlamaCpp model".to_string()),
+                        context_window: Some(8192),
+                        max_output_tokens: Some(4096),
+                        capabilities: vec!["completion".to_string()],
+                        pricing: Some(ModelPricing {
+                            input_cost_per_1k: 0.0,
+                            output_cost_per_1k: 0.0,
+                            currency: "USD".to_string(),
+                        }),
+                    }])
+                } else {
+                    Ok(model_infos)
+                }
+            }
+            _ => {
+                // Fallback to default model if API is unreachable
+                Ok(vec![ModelInfo {
+                    id: self.model_name.clone(),
+                    name: self.model_name.clone(),
+                    description: Some("Local LlamaCpp model (offline)".to_string()),
+                    context_window: Some(8192),
+                    max_output_tokens: Some(4096),
+                    capabilities: vec!["completion".to_string()],
+                    pricing: Some(ModelPricing {
+                        input_cost_per_1k: 0.0,
+                        output_cost_per_1k: 0.0,
+                        currency: "USD".to_string(),
+                    }),
+                }])
+            }
+        }
     }
 }

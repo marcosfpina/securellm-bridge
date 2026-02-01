@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use securellm_core::audit::{AuditEvent, AuditSink};
 use securellm_core::Result;
 use sqlx::SqlitePool;
-use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct SqliteAuditSink {

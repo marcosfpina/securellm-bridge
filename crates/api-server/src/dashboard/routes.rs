@@ -136,10 +136,13 @@ async fn summarize_project(
 struct IntelligenceQuery {
     q: String,
     #[serde(default)]
+    #[allow(dead_code)]
     types: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     projects: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     limit: Option<usize>,
     #[serde(default)]
     semantic: Option<bool>,

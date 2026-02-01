@@ -1,7 +1,6 @@
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::Path;
-use tokio::fs;
 use tracing::debug;
 
 use super::models::{Project, ProjectAnalysis, ProjectMetrics, ProjectStatus};

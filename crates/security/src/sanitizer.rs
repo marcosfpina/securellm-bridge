@@ -10,7 +10,7 @@ impl Sanitizer {
         Self
     }
 
-    pub fn sanitize_request(&self, request: &mut Request) -> Result<()> {
+    pub fn sanitize_request(&self, _request: &mut Request) -> Result<()> {
         // TODO: Implement request sanitization
         // - Remove PII
         // - Validate input
@@ -18,7 +18,7 @@ impl Sanitizer {
         Ok(())
     }
 
-    pub fn sanitize_response(&self, response: &mut Response) -> Result<()> {
+    pub fn sanitize_response(&self, _response: &mut Response) -> Result<()> {
         // TODO: Implement response sanitization
         Ok(())
     }

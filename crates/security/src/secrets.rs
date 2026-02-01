@@ -2,7 +2,7 @@
 // TODO: Implement secure secret storage and retrieval
 
 use crate::{Result, SecurityError};
-use secrecy::{ExposeSecret, Secret};
+use secrecy::Secret;
 use std::collections::HashMap;
 
 /// Secret manager for API keys and sensitive configuration

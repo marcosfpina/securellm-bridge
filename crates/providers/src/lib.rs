@@ -6,7 +6,6 @@ pub mod gemini;
 pub mod groq;
 pub mod llamacpp;
 pub mod nvidia;
-pub mod ollama;
 pub mod openai;
 
 /// Provider-specific error types

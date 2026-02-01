@@ -99,10 +99,13 @@ impl AppState {
 }
 
 use securellm_core::LLMProvider;
+use securellm_providers::anthropic::{AnthropicConfig, AnthropicProvider};
 use securellm_providers::deepseek::{DeepSeekConfig, DeepSeekProvider};
 use securellm_providers::gemini::{GeminiConfig, GeminiProvider};
 use securellm_providers::groq::{GroqConfig, GroqProvider};
+use securellm_providers::llamacpp::LlamaCppProvider;
 use securellm_providers::nvidia::{NvidiaConfig, NvidiaProvider};
+use securellm_providers::openai::{OpenAIConfig, OpenAIProvider};
 
 pub struct ProviderManager {
     providers: RwLock<Vec<Arc<dyn LLMProvider>>>,
@@ -175,6 +178,63 @@ impl ProviderManager {
                     providers.push(Arc::new(p));
                     breakers.insert(
                         "nvidia".to_string(),
+                        CircuitBreaker::new(cfg.circuit_breaker.clone()),
+                    );
+                }
+            }
+        }
+
+        // Add LlamaCpp provider (local inference)
+        if let Some(cfg) = &config.providers.llamacpp {
+            if cfg.enabled {
+                // Parse port from base_url (e.g., "http://localhost:5001")
+                let port = cfg.base_url
+                    .split(':')
+                    .last()
+                    .and_then(|p| p.parse::<u16>().ok())
+                    .unwrap_or(5001);
+
+                let model_name = std::env::var("LLAMACPP_MODEL_NAME")
+                    .unwrap_or_else(|_| "local-model".to_string());
+
+                if let Ok(p) = LlamaCppProvider::new(port, model_name) {
+                    providers.push(Arc::new(p));
+                    breakers.insert(
+                        "llamacpp".to_string(),
+                        CircuitBreaker::new(cfg.circuit_breaker.clone()),
+                    );
+                }
+            }
+        }
+
+        // Add OpenAI provider
+        if let Some(cfg) = &config.providers.openai {
+            if cfg.enabled {
+                let mut p_config = OpenAIConfig::new(&cfg.api_key);
+                if let Some(url) = &cfg.base_url {
+                    p_config.endpoint = url.clone();
+                }
+                if let Ok(p) = OpenAIProvider::new(p_config) {
+                    providers.push(Arc::new(p));
+                    breakers.insert(
+                        "openai".to_string(),
+                        CircuitBreaker::new(cfg.circuit_breaker.clone()),
+                    );
+                }
+            }
+        }
+
+        // Add Anthropic provider
+        if let Some(cfg) = &config.providers.anthropic {
+            if cfg.enabled {
+                let mut p_config = AnthropicConfig::new(&cfg.api_key);
+                if let Some(url) = &cfg.base_url {
+                    p_config.endpoint = url.clone();
+                }
+                if let Ok(p) = AnthropicProvider::new(p_config) {
+                    providers.push(Arc::new(p));
+                    breakers.insert(
+                        "anthropic".to_string(),
                         CircuitBreaker::new(cfg.circuit_breaker.clone()),
                     );
                 }

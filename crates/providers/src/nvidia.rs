@@ -2,12 +2,10 @@ use crate::{ProviderError, Result};
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};
 use securellm_core::{
-    Choice, Error, FinishReason, HealthStatus, LLMProvider, Message, MessageContent, MessageRole,
-    ModelInfo, ModelPricing, ProviderCapabilities, ProviderHealth, Request, Response,
-    ResponseMetadata, TokenUsage,
+    Error, HealthStatus, LLMProvider, ModelInfo, ModelPricing, ProviderCapabilities,
+    ProviderHealth, Request, Response, ResponseMetadata, TokenUsage,
 };
-use serde::{Deserialize, Serialize};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 const DEFAULT_ENDPOINT: &str = "https://integrate.api.nvidia.com/v1";
 
